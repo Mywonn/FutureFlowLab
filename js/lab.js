@@ -1,49 +1,118 @@
-// js/lab.js 修改
-const { ref, reactive } = window.Vue;
 
-// 🚀 这里的常量就是你的“灵魂指令”
-export const AWAKENING_PROMPT = `
-你是一位精通《原子习惯》和《认知觉醒》的行为科学教练。
-你的任务是将用户模糊的想法转化为一个极具执行力的“闪电任务”。
+const { ref } = window.Vue;
 
-解析规则：
-1. 消除模糊（认知觉醒）：将目标具象化，锁定一个处于用户“拉伸区”的具体挑战。
-2. 两分钟法则（原子习惯）：设计一个 2 分钟内就能开始的物理动作作为入口。
-3. 身份认同（原子习惯）：强化用户作为该领域专家的身份感。
+// 1. 闪电模式 Prompt (原版)
+export const FLASH_PROMPT = `
+你是一位精通《原子习惯》的行为教练。
+任务：将用户模糊的想法转化为一个"2分钟就能开始"的物理动作。
 
-请严格按以下 JSON 格式输出，不要包含任何多余文字：
+请严格按以下 JSON 输出：
 {
-  "stretchGoal": "具体的拉伸目标文字",
-  "atomicStart": "具体的 2 分钟启动动作文字",
-  "identityFeedback": "一句鼓励身份认同的话"
+  "stretchGoal": "拉伸区挑战目标",
+  "atomicStart": "2分钟启动动作",
+  "steps": ["步骤1", "步骤2", "步骤3"]
 }
 `;
 
+// 2. ♟️ 战略模式 (三书融合版：觉醒 + 身份 + 刻意练习)
+export const STRATEGY_PROMPT = `
+你是一位精通《认知觉醒》、《原子习惯》和《刻意练习》的战略规划师。
+用户想达成一个长期目标。请根据用户情况（如无数据则默认初学者），设计 **3套不同风格** 的执行方案供选择。
 
+方案风格定义：
+1. **稳健型 (Turtle)**：每天时间少，周期长，适合忙碌者，无痛启动。
+2. **进阶型 (Rabbit)**：强度适中，注重反馈，适合有一定基础者。
+3. **极客型 (Wolf)**：高强度，周期短，通过大量刻意练习快速突破。
 
+请严格按以下 JSON 格式输出（必须包含 options 数组，内含 3 个方案）：
+{
+  "options": [
+    {
+      "type": "🐢 稳健型",
+      "analysis": "简短评估...",
+      "systemName": "Q2任务名",
+      "frequency": "day",
+      "duration": 0.5,
+      "setupAction": "今日启动动作",
+      "milestones": ["阶段1目标", "阶段2目标", "阶段3目标"]
+    },
+    {
+      "type": "🐇 进阶型",
+      // ... 格式同上
+    },
+    {
+      "type": "🐺 极客型",
+      // ... 格式同上
+    }
+  ]
+}
+*注意：frequency 只能是 'day'|'week'|'month'。duration 是小时数。*
+`;
 
 export function useLab() {
-    // 🚀 核心改动：身份不再是预设，而是从本地存储读取或为空
     const identities = ref(JSON.parse(localStorage.getItem('ff_custom_identities')) || []);
     const activeIdentity = ref(identities.value[0] || null);
+    
+    // 👇 新增状态：是否为战略模式 (默认 false = 闪电模式)
+    const isStrategyMode = ref(false);
 
-    const web3Project = ref({
-        name: '',
-        stretchGoal: '',
-        atomicStart: '',
-        suggestedSteps: []
-    });
-
-    // 🚀 新增：保存自定义身份到本地
     const saveIdentities = () => {
         localStorage.setItem('ff_custom_identities', JSON.stringify(identities.value));
     };
 
-    return {
-        identities,
-        activeIdentity,
-        web3Project,
-        saveIdentities,
-        // 留给下一步：AI 生成身份的逻辑
+    
+    const labHistory = ref(JSON.parse(localStorage.getItem('ff_lab_history')) || []);
+
+    const web3Project = ref({
+        name: '',
+        // 👇 数据结构大改：不再存单个字段，而是存方案列表
+        plans: [], 
+        selectedPlanIndex: 0, // 默认选中第0个
+        
+        // 兼容旧逻辑的临时字段 (UI展示用)
+        get currentPlan() {
+            return this.plans[this.selectedPlanIndex] || {};
+        }
+    });
+    
+    // ✅ 保存历史记录的方法
+    const addToHistory = (promptText, resultData) => {
+        const record = {
+            id: Date.now(),
+            date: new Date().toLocaleString(),
+            projectName: web3Project.value.name,
+            prompt: promptText,
+            result: resultData // 完整保存 AI 返回的 JSON
+        };
+        labHistory.value.unshift(record);
+        localStorage.setItem('ff_lab_history', JSON.stringify(labHistory.value));
     };
+
+    // 删除历史
+    const deleteHistory = (id) => {
+        labHistory.value = labHistory.value.filter(h => h.id !== id);
+        localStorage.setItem('ff_lab_history', JSON.stringify(labHistory.value));
+    };
+
+    // 恢复历史
+    const restoreHistory = (record) => {
+        web3Project.value.name = record.projectName;
+        // 恢复方案数据
+        if (record.result.options) {
+            web3Project.value.plans = record.result.options;
+            isStrategyMode.value = true; // 历史记录通常是战略
+        } else {
+            // 兼容旧历史
+            web3Project.value.plans = [record.result];
+        }
+        web3Project.value.selectedPlanIndex = 0;
+    };
+
+    return {
+        identities, activeIdentity, web3Project, saveIdentities,
+        isStrategyMode, FLASH_PROMPT, STRATEGY_PROMPT,
+        labHistory, addToHistory, deleteHistory, restoreHistory, // 导出新功能
+    };
+
+
 }
