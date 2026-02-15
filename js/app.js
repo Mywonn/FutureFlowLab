@@ -1893,6 +1893,8 @@ const handleSync = async (direction) => {
 
     // 🚀 终极合并：确保所有东西都在这一个 return 里！
     return {
+        isDark, 
+        toggleTheme,
         identities, activeIdentity, web3Project, saveIdentities,
         currentTab, showCalendar, toggleCalendar: () => showCalendar.value = !showCalendar.value,
         stripDays, handleHeaderTouchStart, handleHeaderTouchEnd,
@@ -1962,4 +1964,5 @@ const handleSync = async (direction) => {
         setTimeout(() => {
             window.scrollTo(0, 0); // 强制滚回顶部
         }, 100);
+
     });
