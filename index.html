@@ -20,6 +20,15 @@
         tailwind.config = {
             darkMode: 'class',
         }
+        function autoResize(el) {
+        el.style.height = 'auto'; // 先重置高度
+        el.style.height = el.scrollHeight + 'px'; // 再设为内容高度
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+            document.querySelectorAll('textarea').forEach(autoResize);
+        }, 500);
+        });
     </script>
     <script>
         // 立即执行：在页面渲染前判断主题，防止白屏闪烁
@@ -413,108 +422,229 @@
 
     <div class="flex-1 overflow-hidden relative bg-white dark:bg-gray-900 flex flex-col">
         <div v-if="currentTab === 'lab'" class="h-full p-6 space-y-6 bg-slate-50 dark:bg-gray-950 overflow-y-auto pb-20">
-            
+            <div v-if="showHistoryModal" class="fixed inset-0 z-[150] bg-black/50 backdrop-blur-sm flex justify-end" @click.self="showHistoryModal=false">
+                <div class="w-3/4 max-w-sm h-full bg-white dark:bg-gray-900 p-6 overflow-y-auto animate-slide-left shadow-2xl">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="font-bold text-lg text-gray-800 dark:text-white">📜 历史记录</h3>
+                        <button @click="showHistoryModal=false" class="text-2xl text-gray-400">×</button>
+                    </div>
+                    
+                    <div v-if="labHistory.length === 0" class="py-20 text-center opacity-30 text-xs">
+                        暂无历史记录
+                    </div>
+
+                    <div v-for="h in labHistory" :key="h.id" class="mb-4 bg-gray-50 dark:bg-gray-800 p-4 rounded-2xl relative border border-gray-100 dark:border-gray-700 shadow-sm">
+                        <button @click="deleteHistory(h.id)" class="absolute top-2 right-2 text-gray-300 hover:text-red-500">×</button>
+                        <div class="text-[10px] text-gray-400 mb-1">{{ h.date }}</div>
+                        <div class="font-bold text-indigo-600 mb-2">{{ h.projectName }}</div>
+                        <button @click="restoreHistory(h); showHistoryModal=false" class="mt-2 w-full bg-white dark:bg-gray-700 text-xs font-bold py-2 rounded-lg border border-gray-200 dark:border-gray-600 active:scale-95 transition">
+                            再次唤醒
+                        </button>
+                    </div>
+                </div>
+            </div>
             <div class="flex justify-between items-center mb-4">
                 <div>
                     <h2 class="text-xl font-bold text-indigo-600 dark:text-indigo-400 leading-none">觉醒实验室</h2>
                     <p class="text-[10px] text-gray-400 uppercase tracking-widest mt-1">Awakening Lab</p>
                 </div>
-                <button @click="showAiConfigModal = true" class="p-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 active:scale-95 transition">
-                    <span class="text-sm">⚙️ 设置</span>
-                </button>
-            </div>
-
-            <div class="space-y-6">
-                <div class="flex space-x-2 overflow-x-auto no-scrollbar py-2 items-center">
-                        <button v-for="id in identities" :key="id.id" 
-                                @click="activeIdentity = id"
-                                @touchstart="startIdentityPress(id)"
-                                @touchend="clearIdentityPress"
-                                @mousedown="startIdentityPress(id)"
-                                @mouseup="clearIdentityPress"
-                                class="shrink-0 px-4 py-2 rounded-2xl text-xs font-bold transition-all border"
-                                :class="activeIdentity?.id === id.id ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white dark:bg-gray-800 text-gray-400'">
-                            {{ id.icon }} {{ id.name }}
-                        </button>
-
-                        <button @click="openAddIdentityModal" 
-                                class="shrink-0 w-10 h-10 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-400">
-                            ＋
-                        </button>
-                    </div>
-
-                    <div v-if="!activeIdentity" class="py-10 text-center space-y-4">
-                        <div class="text-4xl">✨</div>
-                        <h3 class="text-lg font-bold text-gray-800 dark:text-white">开始你的进化</h3>
-                        <p class="text-xs text-gray-400 px-10 leading-relaxed">
-                            《原子习惯》告诉我们：改变习惯最有效的方法是改变身份认同。请点击上方按钮，告诉 AI 你想成为什么样的人。
-                        </p>
-                    </div>
-
-                    <div v-if="activeIdentity" class="animate-fade-in space-y-4">
-                        </div>
-            </div>                                                                                             
-
-            <div class="space-y-6">
-                <div v-if="activeIdentity" class="animate-fade-in space-y-4">
-                    <div class="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-indigo-50 dark:border-indigo-900/20">
-                        <h3 class="text-indigo-600 font-black text-sm uppercase tracking-tighter mb-4">项目解析仪</h3>
-                        
-                        <div class="space-y-4">
-                            <div>
-                                <label class="text-[10px] text-gray-400 font-bold uppercase">正在探索的项目</label>
-                                <div class="flex items-center space-x-2 border-b border-gray-100 dark:border-gray-700 py-1">
-                                    <input v-model="web3Project.name" placeholder="例如: ZKsync, 雅思写作..." 
-                                        class="flex-1 bg-transparent py-1 outline-none text-lg font-bold">
-                                    <button @click="runAiAnalysis" 
-                                            :disabled="isAnalyzing"
-                                            class="shrink-0 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-3 py-1.5 rounded-xl text-xs font-black active:scale-95 transition">
-                                        {{ isAnalyzing ? '解析中...' : '🪄 AI 解析' }}
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="text-[10px] text-gray-400 font-bold uppercase">拉伸区目标 (今日核心)</label>
-                                <textarea v-model="web3Project.stretchGoal" placeholder="AI 将为你拆解清晰目标..." 
-                                        class="w-full bg-gray-50 dark:bg-gray-900/50 rounded-xl p-3 mt-1 text-sm outline-none h-20"></textarea>
-                            </div>
-
-                            <div class="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-800/30">
-                                <label class="text-[10px] text-indigo-400 font-bold uppercase">2分钟原子入口</label>
-                                <div class="flex items-center mt-1">
-                                    <span class="mr-2">⚡</span>
-                                    <input v-model="web3Project.atomicStart" placeholder="极简启动动作..." 
-                                        class="bg-transparent w-full text-sm font-bold text-indigo-700 dark:text-indigo-300 outline-none">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div v-if="web3Project.suggestedSteps.length > 0" class="space-y-2 mt-4 px-1">
-                        <label class="text-[10px] text-gray-400 font-bold uppercase block px-1">确认后续路径 (可点选)</label>
-                        <div v-for="(step, index) in web3Project.suggestedSteps" :key="index"
-                            @click="step.selected = !step.selected"
-                            class="flex items-start p-3 rounded-xl border transition-all cursor-pointer"
-                            :class="step.selected ? 'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/20 dark:border-indigo-800' : 'bg-transparent border-gray-100 dark:border-gray-800 opacity-40'">
-                            <div class="mr-3 mt-0.5">
-                                <div v-if="step.selected" class="text-indigo-600 text-xs">●</div>
-                                <div v-else class="w-2 h-2 rounded-full border border-gray-400"></div>
-                            </div>
-                            <span class="text-xs font-medium" :class="step.selected ? 'text-indigo-900 dark:text-indigo-200' : 'text-gray-400'">
-                                {{ step.text }}
-                            </span>
-                        </div>
-                    </div>
-
-                    <button @click="startEvolution" 
-                            class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black shadow-xl shadow-indigo-200 dark:shadow-none active:scale-95 transition-transform mt-4">
-                        以此身份开始进化
+                
+                <div class="flex space-x-2">
+                    <button @click="showHistoryModal = true" class="p-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 active:scale-95 transition">
+                        <span class="text-sm">📜</span>
+                    </button>
+                    <button @click="showAiConfigModal = true" class="p-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 active:scale-95 transition">
+                        <span class="text-sm">⚙️</span>
                     </button>
                 </div>
             </div>
-        </div>
-        
+
+            <div class="bg-indigo-600 dark:bg-indigo-900 rounded-3xl p-6 text-white mb-6 relative overflow-hidden shadow-lg shadow-indigo-200 dark:shadow-none animate-fade-in">
+                <div class="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 bg-white opacity-10 rounded-full blur-2xl"></div>
+                
+                <div class="relative z-10">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <div class="text-[10px] font-bold opacity-60 uppercase tracking-widest mb-1">Current Identity</div>
+                            <h3 class="text-2xl font-black flex items-center">
+                                <span class="mr-2 text-3xl">{{ activeIdentity?.icon || '🌱' }}</span>
+                                {{ activeIdentity?.name || '探索者' }}
+                            </h3>
+                        </div>
+                        <button @click="openAddIdentityModal" class="bg-white/20 hover:bg-white/30 p-2 rounded-xl backdrop-blur-sm transition">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"></path></svg>
+                        </button>
+                    </div>
+
+                    <div class="flex space-x-3 overflow-x-auto pb-2 no-scrollbar">
+                        <div v-for="id in identities" :key="id.id" 
+                             @click="activeIdentity = id; saveIdentities()"
+                             @touchstart="startIdentityPress(id)"
+                             @touchend="clearIdentityPress"
+                             @touchcancel="clearIdentityPress"
+                             class="shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border border-transparent"
+                             :class="activeIdentity?.id === id.id ? 'bg-white text-indigo-600 shadow-sm' : 'bg-indigo-700/50 text-indigo-100 hover:bg-indigo-700 border-indigo-500/30'">
+                            {{ id.icon }} {{ id.name }}
+                        </div>
+                    </div>
+                </div>
+                <div v-if="showAddIdentityModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+                <div class="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-xs shadow-2xl animate-scale-up">
+                    <h3 class="text-lg font-black text-gray-800 dark:text-white mb-4">✨ 定义新身份</h3>
+                    <input v-model="newIdentityInput" placeholder="例如: 雅思8分选手" class="w-full bg-gray-100 dark:bg-gray-700 rounded-xl p-3 mb-4 outline-none font-bold" auto-focus>
+                    <div class="flex space-x-3">
+                        <button @click="showAddIdentityModal = false" class="flex-1 py-3 text-gray-500 font-bold">取消</button>
+                        <button @click="confirmAddIdentity" class="flex-1 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 dark:shadow-none">确认</button>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="showEditIdentityModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+                <div class="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-xs shadow-2xl animate-scale-up">
+                    <h3 class="text-lg font-black text-gray-800 dark:text-white mb-2">编辑身份</h3>
+                    <p class="text-xs text-gray-400 mb-4">修改名称或删除此身份</p>
+                    
+                    <input v-model="editIdentityInput" class="w-full bg-gray-100 dark:bg-gray-700 rounded-xl p-3 mb-4 outline-none font-bold text-center text-lg">
+                    
+                    <div class="space-y-3">
+                        <button @click="confirmEditIdentity" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">保存修改</button>
+                        <button @click="deleteIdentity" class="w-full bg-red-50 text-red-500 dark:bg-red-900/20 py-3 rounded-xl font-bold">删除身份</button>
+                        <button @click="showEditIdentityModal = false" class="w-full text-gray-400 py-2 font-bold text-xs">取消</button>
+                    </div>
+                </div>
+            </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-indigo-50 dark:border-indigo-900/20 animate-fade-in">
+                
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-indigo-600 font-black text-sm uppercase tracking-tighter">
+                        {{ isStrategyMode ? '♟️ 战略指挥部' : '⚡ 闪电行动室' }}
+                    </h3>
+                    
+                    <div class="bg-gray-100 dark:bg-gray-700 p-1 rounded-lg flex text-[10px] font-bold">
+                        <button @click="isStrategyMode = false" 
+                                class="px-3 py-1.5 rounded-md transition-all"
+                                :class="!isStrategyMode ? 'bg-white dark:bg-gray-600 text-indigo-600 shadow-sm' : 'text-gray-400'">
+                            Flash
+                        </button>
+                        <button @click="isStrategyMode = true" 
+                                class="px-3 py-1.5 rounded-md transition-all"
+                                :class="isStrategyMode ? 'bg-white dark:bg-gray-600 text-indigo-600 shadow-sm' : 'text-gray-400'">
+                            Strategy
+                        </button>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-[10px] text-gray-400 font-bold uppercase">正在探索的项目</label>
+                        <div class="flex items-start space-x-2 border-b border-gray-100 dark:border-gray-700 py-1">
+                            <textarea v-model="web3Project.name" 
+                                        rows="1"
+                                        placeholder="例如: ZKsync, 雅思写作..." 
+                                        oninput="autoResize(this)"
+                                        class="flex-1 bg-transparent py-1 outline-none text-lg font-bold resize-none overflow-hidden placeholder-gray-300 dark:placeholder-gray-600 h-auto"
+                                        style="min-height: 2rem;"></textarea>
+                            <button @click="runAiAnalysis" 
+                                    :disabled="isAnalyzing"
+                                    class="shrink-0 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-3 py-1.5 rounded-xl text-xs font-black active:scale-95 transition">
+                                {{ isAnalyzing ? '解析中...' : '🪄 AI 解析' }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase mb-2 block">
+                            {{ isStrategyMode ? '♟️ 现状评估 & 战略周期 (Analysis)' : '🎯 具象化目标 (Stretch Goal)' }}
+                        </label>
+                        <textarea 
+                            :value="web3Project.plans.length > 0 
+                                ? (web3Project.plans[web3Project.selectedPlanIndex].analysis || web3Project.plans[web3Project.selectedPlanIndex].stretchGoal) 
+                                : web3Project.stretchGoal"
+                            @input="web3Project.stretchGoal = $event.target.value"
+                            rows="3"
+                            placeholder="AI 将为你拆解清晰目标..." 
+                            oninput="autoResize(this)"
+                            class="w-full bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 mt-1 text-sm outline-none resize-none overflow-hidden leading-relaxed text-gray-700 dark:text-gray-200 transition-all focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900/30 duration-300"
+                            style="min-height: 5rem;"></textarea>
+                    </div>
+
+                    <div class="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-800/30 transition-all duration-300">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase mb-2 block">
+                            {{ isStrategyMode ? '🚀 今日启动扳机 (Launch Trigger)' : '⚡ 2分钟原子入口 (Atomic Start)' }}
+                        </label>
+                        <div class="flex items-start mt-1">
+                            <span class="mr-2 mt-1">⚡</span> 
+                            <textarea 
+                                :value="web3Project.plans.length > 0 
+                                    ? (web3Project.plans[web3Project.selectedPlanIndex].setupAction || web3Project.plans[web3Project.selectedPlanIndex].atomicStart) 
+                                    : web3Project.atomicStart"
+                                @input="web3Project.atomicStart = $event.target.value"
+                                rows="1" 
+                                placeholder="极简启动动作..." 
+                                oninput="autoResize(this)"
+                                class="bg-transparent w-full text-sm font-bold text-indigo-700 dark:text-indigo-300 outline-none resize-none overflow-hidden h-auto"
+                                style="min-height: 1.5rem;"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div> 
+            <div v-if="web3Project.plans.length > 0" class="mt-8 animate-slide-up">
+                
+                <div class="flex justify-between items-end px-1 mb-2">
+                    <label class="text-[10px] text-gray-400 font-bold uppercase">选择执行方案 ({{ web3Project.plans.length }})</label>
+                    <span class="text-[10px] text-indigo-500 font-bold opacity-60">← 左右滑动对比 →</span>
+                </div>
+
+                <div class="flex overflow-x-auto no-scrollbar space-x-4 pb-4 snap-x snap-mandatory px-1">
+                    <div v-for="(plan, index) in web3Project.plans" :key="index"
+                            @click="web3Project.selectedPlanIndex = index"
+                            class="shrink-0 w-[85%] snap-center rounded-3xl p-5 border-2 transition-all duration-300 relative overflow-hidden bg-white dark:bg-gray-800 shadow-sm cursor-pointer group"
+                            :class="web3Project.selectedPlanIndex === index ? 'border-indigo-500 ring-4 ring-indigo-500/10 scale-[1.02] shadow-md z-10' : 'border-transparent opacity-60 scale-95 grayscale-[0.5]'">
+                        
+                        <div v-if="web3Project.selectedPlanIndex === index" class="absolute top-0 right-0 bg-indigo-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-sm">
+                            SELECTED
+                        </div>
+
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="font-black text-xl text-gray-800 dark:text-white">{{ plan.type || '方案 '+(index+1) }}</h4>
+                            <div v-if="plan.systemName" class="text-[10px] font-bold px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300">
+                                {{ plan.frequency === 'day' ? '每日循环' : (plan.frequency === 'week' ? '每周循环' : '每月循环') }}
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <div class="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-xl border border-indigo-100 dark:border-indigo-800/30">
+                                <span class="mr-1">🔁</span> {{ plan.systemName || '系统名称' }}
+                            </div>
+
+                            <div class="border-t border-gray-100 dark:border-gray-700 pt-3">
+                                <p class="text-[10px] font-bold text-gray-400 uppercase mb-2">执行路径 (Milestones)</p>
+                                <div class="space-y-3">
+                                    <div v-for="(step, i) in (plan.milestones || plan.steps || [])" :key="i" class="flex items-start text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                                        <span class="mr-2 mt-0.5 text-indigo-400 font-bold opacity-50">{{ i + 1 }}.</span>
+                                        <span>{{ step }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button @click="startEvolution" 
+                        class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black shadow-xl shadow-indigo-200 dark:shadow-none active:scale-95 transition-transform mt-2 mb-10 flex flex-col items-center justify-center relative overflow-hidden group">
+                    <span class="relative z-10 text-sm">采用此方案并执行</span>
+                    <span class="relative z-10 text-[10px] opacity-80 font-normal mt-0.5">
+                        {{ web3Project.plans[web3Project.selectedPlanIndex]?.type || 'Standard Plan' }}
+                    </span>
+                    <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                </button>
+            </div>
+
+        </div> 
+ 
+
+
      <div v-if="currentTab === 'now'" class="h-full flex flex-col">
             
             <div class="shrink-0 bg-white dark:bg-gray-900 z-30 pt-4 px-4 pb-3 shadow-sm/50">
@@ -562,9 +692,13 @@
                                 </div>
                             </button>
 
-                            <div class="flex-1 min-w-0 pr-4"> <span class="font-medium text-sm text-gray-700 dark:text-gray-200 truncate block leading-relaxed">
-                                    {{ task.text }}
-                                </span>
+                            <div class="flex-1 min-w-0 pr-4"> 
+                                <div class="marquee-box w-full">
+                                    <div :class="{'animate-marquee': task.text.length > 12}"
+                                        class="font-medium text-sm text-gray-700 dark:text-gray-200 leading-relaxed inline-block truncate">
+                                        {{ task.text }}
+                                    </div>
+                                </div>
                                 <div v-if="task.duration > 0" class="mt-1 h-1 w-24 bg-red-100 dark:bg-gray-700 rounded-full overflow-hidden">
                                     <div class="h-full bg-blue-500 rounded-full" :style="{ width: Math.min((task.accumulated || 0) / task.duration * 100, 100) + '%' }"></div>
                                 </div>
@@ -630,9 +764,12 @@
                             </button>
 
                             <div class="flex-1 min-w-0">
-                                <span class="font-medium text-sm text-gray-700 dark:text-gray-200 truncate block leading-relaxed">
-                                    {{ task.text }}
-                                </span>
+                                <div class="marquee-box w-full">
+                                    <div :class="{'animate-marquee': task.text.length > 12}"
+                                        class="font-medium text-sm text-gray-700 dark:text-gray-200 leading-relaxed inline-block truncate">
+                                        {{ task.text }}
+                                    </div>
+                                </div>
                                 <div v-if="task.duration > 0" class="mt-1 h-1 w-24 bg-red-100 dark:bg-gray-700 rounded-full overflow-hidden">
                                     <div class="h-full bg-blue-500 rounded-full" :style="{ width: Math.min((task.accumulated || 0) / task.duration * 100, 100) + '%' }"></div>
                                 </div>
@@ -984,10 +1121,12 @@
                                 ✓ 今日已做
                             </div>
 
-                            <span class="font-bold text-gray-800 dark:text-gray-200 truncate" 
-                                :class="{'opacity-50 line-through': isTaskDone(task, selectedDate)}">
-                                {{ task.text }}
-                            </span>
+                            <div class="marquee-box flex-1 min-w-0">
+                                <div :class="{'animate-marquee': task.text.length > 12, 'opacity-50 line-through': isTaskDone(task, selectedDate)}"
+                                    class="font-bold text-gray-800 dark:text-gray-200 truncate inline-block">
+                                    {{ task.text }}
+                                </div>
+                            </div>
                             
                             <span class="text-[9px] bg-gray-100 dark:bg-gray-700 text-gray-500 px-1.5 py-0.5 rounded font-black shrink-0">Q{{ task.q }}</span>
                         </div>
@@ -1431,8 +1570,10 @@
                 <div>
                     <label class="text-[10px] font-bold text-gray-400 uppercase">选择模型</label>
                     <select v-model="aiConfig.model" class="w-full bg-gray-50 dark:bg-gray-900 p-3 rounded-xl text-sm outline-none border border-transparent focus:border-indigo-500">
-                        <option value="gemini-1.5-flash">Gemini 1.5 Flash (极速/免费)</option>
-                        <option value="gemini-1.5-pro">Gemini 1.5 Pro (全能/深度)</option>
+                        <option value="gemini-1.5-flash">Gemini 1.5 Flash (Google/极速)</option>
+                        <option value="gemini-1.5-pro">Gemini 1.5 Pro (Google/深度)</option>
+                        
+                        <option value="deepseek-chat">DeepSeek V3 (国产之光/无需魔法)</option>
                     </select>
                 </div>
                 
