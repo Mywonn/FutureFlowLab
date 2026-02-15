@@ -1,6 +1,6 @@
 
 import { useTasks } from './tasks.js';
-import { useLab, AWAKENING_PROMPT } from './lab.js';
+import { useLab } from './lab.js';
 // import { useCountdown } from './countdown.js';
 
 
@@ -10,7 +10,11 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
         setup() {
             const { tasks } = useTasks();
 
-            const { identities, activeIdentity, web3Project, toggleAtomicMode, saveIdentities } = useLab();
+            const { 
+                identities, activeIdentity, web3Project, saveIdentities,
+                isStrategyMode, FLASH_PROMPT, STRATEGY_PROMPT,
+                labHistory, addToHistory, deleteHistory, restoreHistory // 👈 新增
+            } = useLab();
 
             // --- 3. 夜间模式逻辑 ---
             const isDark = ref(false);
@@ -134,6 +138,7 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
 
             // --- 原有逻辑 ---
             const currentTab = ref('now');
+            const showHistoryModal = ref(false);
             const showCompletedInbox = ref(false); // 控制已完成列表的显示/隐藏
             const showCompletedProgress = ref(false); // ✅ 新增：进度页折叠
             const showExpiredCountdown = ref(false);  // ✅ 新增：倒数日折叠
@@ -1815,80 +1820,163 @@ const handleSync = async (direction) => {
     // FutureFlow/js/app.js 约 1440 行
     const isAnalyzing = ref(false);
 
-    
     const runAiAnalysis = async () => {
-            if (!aiConfig.key) { showAiConfigModal.value = true; return; }
-            if (!web3Project.value.name) { alert("请先输入项目名"); return; }
-            
-            isAnalyzing.value = true;
-            try {
-                const promptText = `${AWAKENING_PROMPT}\n身份: ${activeIdentity.value.name}\n项目: ${web3Project.value.name}`;
+        if (!aiConfig.key) { showAiConfigModal.value = true; return; }
+        if (!web3Project.value.name) { alert("请先输入项目名"); return; }
+        
+        isAnalyzing.value = true;
+        const GEMINI_PROXY = 'https://futureflowlab.mzdesx.workers.dev'; 
 
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${aiConfig.model}:generateContent?key=${aiConfig.key}`, {
+        try {
+            // 🚀 核心分支：根据开关选择 Prompt
+            const currentPrompt = isStrategyMode.value ? STRATEGY_PROMPT : FLASH_PROMPT;
+            
+            const promptText = `${currentPrompt}\n用户身份: ${activeIdentity.value.name}\n目标项目: ${web3Project.value.name}`;
+            
+            let rawText = "";
+
+            // ... (中间的 DeepSeek/Gemini 请求代码保持不变) ...
+            // ... (省略 fetch 代码，跟之前一样) ...
+            
+            // 假设这里 fetch 完了，拿到 rawText
+             if (aiConfig.model === 'deepseek-chat') {
+                 // ... DeepSeek 请求代码 ...
+                 const response = await fetch("https://api.deepseek.com/chat/completions", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${aiConfig.key}` },
+                    body: JSON.stringify({ model: "deepseek-chat", messages: [{ role: "system", content: "你只输出JSON。" }, { role: "user", content: promptText }], temperature: 1.1 })
+                });
+                const data = await response.json();
+                rawText = data.choices[0].message.content;
+             } else {
+                 // ... Gemini 请求代码 ...
+                 const response = await fetch(`${GEMINI_PROXY}/v1beta/models/${aiConfig.model}:generateContent?key=${aiConfig.key}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
                 });
-
                 const data = await response.json();
+                rawText = data.candidates[0].content.parts[0].text;
+             }
+            
+
+            console.log("AI 回传:", rawText);
+            const jsonMatch = rawText.match(/\{[\s\S]*\}/); 
+            
+            if (jsonMatch) {
+                const cleanJson = JSON.parse(jsonMatch[0]);
+
+                addToHistory(promptText, cleanJson);
                 
-                if (data.candidates && data.candidates[0].content.parts[0].text) {
-                    const rawText = data.candidates[0].content.parts[0].text;
-                    const jsonMatch = rawText.match(/\{[\s\S]*\}/); 
-                    if (jsonMatch) {
-                        const cleanJson = JSON.parse(jsonMatch[0]);
-                        web3Project.value.stretchGoal = cleanJson.stretchGoal;
-                        web3Project.value.atomicStart = cleanJson.atomicStart;
-                        const steps = cleanJson.steps || cleanJson.suggestedSteps || [];
-                        web3Project.value.suggestedSteps = steps.map(s => ({ text: s, selected: true }));
-                        return; // 🚀 成功解析，退出函数
-                    }
+                // 🧹 清空旧数据
+            web3Project.value.plans = [];
+
+            if (isStrategyMode.value) {
+                // ♟️ 战略模式：读取 options 数组
+                if (cleanJson.options && Array.isArray(cleanJson.options)) {
+                    web3Project.value.plans = cleanJson.options;
+                } else {
+                    // 容错：如果 AI 还是吐了单个对象
+                    web3Project.value.plans = [cleanJson];
                 }
-                throw new Error("格式错误");
-
-            } catch (e) {
-                console.error("AI 连接受阻，启动模拟模式:", e);
-                // 🚀 核心改进：当网络报错时，不再只是弹窗，而是直接把数据喂给 UI
-                alert("⚠️ 当前网络无法连接 Google AI，已自动切换为【本地模拟解析】。");
-                
-                web3Project.value.stretchGoal = "具象化目标：在 30 分钟内完成《认知觉醒》核心逻辑的 UI 部署";
-                web3Project.value.atomicStart = "打开 VS Code 替换 app.js 核心函数";
-                web3Project.value.suggestedSteps = [
-                    { text: "步骤 1：清理代码中的重复 import 和变量声明", selected: true },
-                    { text: "步骤 2：测试身份按钮的长按管理弹窗是否生效", selected: true },
-                    { text: "步骤 3：点击‘开始进化’验证任务是否下发到专注页", selected: true }
-                ];
-            } finally {
-                isAnalyzing.value = false;
+            } else {
+                // ⚡ 闪电模式：构造成一个单元素数组，方便统一 UI
+                web3Project.value.plans = [{
+                    type: '⚡ 极速行动',
+                    analysis: cleanJson.stretchGoal, // 映射字段
+                    setupAction: cleanJson.atomicStart,
+                    milestones: cleanJson.steps || []
+                }];
             }
-        };
-
-
-    // ⚡ 进化函数：从这里定义，确保下面 return 能拿到它
-    const startEvolution = () => {
-        if (!aiConfig.key) {
-            showAiConfigModal.value = true;
+            web3Project.value.selectedPlanIndex = 0;
             return;
+            }
+            throw new Error("格式解析失败");
+
+        } catch (e) {
+            console.error(e);
+            alert("AI 请求失败，切换模拟数据...");
+            // 模拟数据也可以做分支，这里简略
+        } finally {
+            isAnalyzing.value = false;
         }
+    };
+
+
+ 
+    const startEvolution = () => {
         
-        // 1. 提取选中的步骤
-        const selectedSteps = web3Project.value.suggestedSteps
-            .filter(s => s.selected)
-            .map(s => ({ id: Date.now() + Math.random(), text: s.text, done: false }));
+        const plan = web3Project.value.currentPlan; 
+    if (!plan) return;
 
-        // 2. 组装任务
-        const flashTask = {
-            id: Date.now(),
-            text: `⚡ ${web3Project.value.atomicStart || '开启'} + ${web3Project.value.name || '新目标'}`,
-            q: 2,
-            done: false,
-            expanded: true,
-            subtasks: selectedSteps,
-            startDate: new Date().toISOString().split('T')[0]
-        };
+    const todayStr = new Date().toISOString().split('T')[0];
+    
+    // 提取子任务
+    const subtasks = (plan.milestones || []).map(s => ({ 
+        id: Date.now() + Math.random(), text: s, done: false 
+    }));
 
-        tasks.value.unshift(flashTask);
+    if (isStrategyMode.value) {
+        // 部署启动任务
+        if (plan.setupAction) {
+            tasks.value.unshift({
+                id: Date.now(),
+                text: `🚀 [启动] ${plan.setupAction}`,
+                q: 0,
+                done: false,
+                duration: 0.5,
+                startDate: todayStr,
+                endDate: todayStr,
+                repeat: 'none',
+                subtasks: []
+            });
+        }
+        // 部署系统任务
+        if (plan.systemName) {
+            setTimeout(() => {
+                tasks.value.push({
+                    id: Date.now() + 1,
+                    text: plan.systemName,
+                    q: 2,
+                    done: false,
+                    duration: plan.duration || 0.5,
+                    startDate: todayStr,
+                    endDate: '',
+                    repeat: plan.frequency || 'day',
+                    repeatInterval: 1,
+                    expanded: true,
+                    subtasks: subtasks // 里程碑
+                });
+            }, 10);
+        }
+    } else {
+        
+            // === ⚡ 闪电模式：单点突破 ===
+            // 保持原有的简单逻辑，快速生成一个任务
+            tasks.value.unshift({
+                id: Date.now(),
+                text: `⚡ ${web3Project.value.atomicStart || web3Project.value.name}`,
+                q: 1, // 闪电行动通常比较急，放 Q1 或 Inbox
+                done: false,
+                duration: 0.5,
+                startDate: todayStr,
+                endDate: todayStr,
+                repeat: 'none',
+                accumulated: 0,
+                log: [],
+                expanded: true,
+                subtasks: subtasks
+            });
+        }
+
+        // 部署完成后，跳转回“今日专注”页查看成果
         currentTab.value = 'now'; 
+        
+        // 清空输入，方便下次
+        web3Project.value.name = '';
+        web3Project.value.stretchGoal = '';
+        web3Project.value.atomicStart = '';
+        web3Project.value.suggestedSteps = [];
     };
 
     // 🚀 终极合并：确保所有东西都在这一个 return 里！
@@ -1896,6 +1984,7 @@ const handleSync = async (direction) => {
         isDark, 
         toggleTheme,
         identities, activeIdentity, web3Project, saveIdentities,
+        showHistoryModal,
         currentTab, showCalendar, toggleCalendar: () => showCalendar.value = !showCalendar.value,
         stripDays, handleHeaderTouchStart, handleHeaderTouchEnd,
         dateScrollContainer, touchStart, touchEnd,
@@ -1922,7 +2011,8 @@ const handleSync = async (direction) => {
         showAiConfigModal, aiConfig, saveAiConfig,
         showAddIdentityModal, showEditIdentityModal, newIdentityInput, editIdentityInput,
         openAddIdentityModal, confirmAddIdentity, confirmEditIdentity, deleteIdentity,
-        startIdentityPress, clearIdentityPress,isAnalyzing, runAiAnalysis, startEvolution 
+        startIdentityPress, clearIdentityPress,isAnalyzing, runAiAnalysis, startEvolution,isStrategyMode,
+        labHistory, addToHistory, deleteHistory, restoreHistory,
     };
         } // 结束 setup
     }); // 结束 createApp 定义
