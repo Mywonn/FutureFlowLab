@@ -33,14 +33,17 @@
     <script>
         // 立即执行：在页面渲染前判断主题，防止白屏闪烁
         try {
-            // ✅ 修改 key 名，强制重置为跟随系统
-            const savedTheme = localStorage.getItem('future_flow_theme');
+            // 🚫 修改：不再读取 savedTheme，完全听系统的
             const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            if (savedTheme === 'dark' || (!savedTheme && systemDark)) {
+            
+            // 只要系统是 dark，我就 dark；否则就 remove
+            if (systemDark) {
                 document.documentElement.classList.add('dark');
             } else {
                 document.documentElement.classList.remove('dark');
             }
+            // 🧹 顺手清理掉旧的缓存，彻底断了念想
+            localStorage.removeItem('future_flow_theme');
         } catch (e) {}
     </script>
     <script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.min.js"></script>
@@ -1710,5 +1713,4 @@
 <script type="module" src="js/app.js"></script>
 </body>
 </html>
-
 
