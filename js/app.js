@@ -885,56 +885,51 @@ const handleSync = async (direction) => {
                 const selTime = sel.getTime();
 
                 return tasks.value.filter(t => {
-                    // 1. 基础过滤
-                    if (t.q <= 0) return false; 
+                // 1. 基础过滤：排除 Inbox (Q0)
+                if (t.q <= 0) return false; 
+                
+                // 2. 完成过滤：只要在当天算作“已完成”，直接隐藏
+                if (isTaskDone(t, selectedDate.value)) return false;
+
+                // ✅ 修复 Bug 1：隐藏“非今日”的重复任务
+                // 如果是重复任务，但根据规则今天不需要做（比如每3天一次，今天轮空），
+                // 那么它既不该出现在 Top List，也不该出现在这里“诈尸”。
+                if (t.repeat && t.repeat !== 'none' && !checkTaskVisible(t, selectedDate.value)) return false;
+
+                // 3. 【去重熔断】：
+                // 如果任务是 Q1-Q3 且 今天可见，它一定在 Top List 显示了，这里隐藏。
+                // (Q4 会绕过这个检查，流到这里显示)
+                if ([1,2,3].includes(t.q) && checkTaskVisible(t, selectedDate.value)) return false;
+
+                // 4. 【过期熔断】：已过期的隐藏
+                if (t.endDate) {
+                    const e = new Date(t.endDate);
+                    e.setHours(0,0,0,0);
+                    if (selTime > e.getTime()) return false; 
+                }
+
+                // ✅ 修复 Bug 2：稳健的【未来熔断】
+                // 不直接用 new Date(string)，避免 UTC 时区偏移导致“今天的任务被当成未来”
+                if (t.startDate) {
+                    const [y, m, d] = t.startDate.split('-').map(Number);
+                    const startTs = new Date(y, m - 1, d).getTime(); // 强制构造本地 00:00
                     
-                    // ❌ 删除旧代码 (旧逻辑只防住了全局完成，没防住重复任务的今日打卡)
-                    // if (t.done) return false; 
-                    // if (t.duration > 0 && (t.accumulated || 0) >= t.duration) return false; 
+                    // 只有当 开始时间 > 今天 00:00 时，才算未来任务
+                    if (startTs > selTime) return false;
+                }
 
-                    // ✅ 新增核心修复：统一使用 isTaskDone 严防死守
-                    // 只要在当天算作“已完成” (包括重复任务今日已勾选)，直接隐藏！
-                    if (isTaskDone(t, selectedDate.value)) return false;
+                return true;
 
-                    // 2. 【去重熔断】：
-                    // 逻辑：如果这个任务【是 Q1-Q3】 且 【今天该做】，那它肯定在上面显示了，这里就隐藏。
-                    // 巧妙之处：如果任务是 Q4，即使【今天该做】，前一个条件不满足，这里不会返回 false，
-                    // 于是 Q4 就会顺利流到这个列表里！解决了你的逻辑差问题。
-                    if ([1,2,3].includes(t.q) && checkTaskVisible(t, selectedDate.value)) return false;
-
-                    // 3. 【过期熔断】：如果结束日期早于今天，直接隐藏，保持清爽
-                    if (t.endDate) {
-                        const e = new Date(t.endDate);
-                        e.setHours(0,0,0,0);
-                        if (selTime > e.getTime()) return false; 
-                    }
-
-                    // ✅ 新增【未来熔断】：如果开始日期晚于今天，先隐藏起来，不要干扰今天的视线
-                    if (t.startDate) {
-                        const s = new Date(t.startDate);
-                        s.setHours(0,0,0,0);
-                        // 如果任务的开始时间 > 当前选中的时间，说明是未来的，隐藏！
-                        if (s.getTime() > selTime) return false;
-                    }
-
-                    return true;
-
-                }).sort((a, b) => {
-                     // 4. 智能排序
-                     // 优先展示有日期的 (未来任务)，把没日期的 (积压任务) 放到最后
-                     if (a.startDate && !b.startDate) return -1;
-                     if (!a.startDate && b.startDate) return 1;
-                     
-                     // 如果都有日期，按日期远近排 (最近的未来在最前)
-                     // 这样“今天的 Q4”因为日期最近，会排在第一个！
-                     if (a.startDate && b.startDate) {
-                         return new Date(a.startDate) - new Date(b.startDate);
-                     }
-                     
-                     // 如果都没日期，按 Q 值排
-                     return a.q - b.q; 
-                }); 
-            });
+            }).sort((a, b) => {
+                 // 5. 智能排序
+                 if (a.startDate && !b.startDate) return -1;
+                 if (!a.startDate && b.startDate) return 1;
+                 if (a.startDate && b.startDate) {
+                     return new Date(a.startDate) - new Date(b.startDate);
+                 }
+                 return a.q - b.q; 
+            }); 
+        });
             
             // 辅助：获取天数
             const getD = (c) => getDaysUntilData(c).days;
@@ -1480,7 +1475,7 @@ const handleSync = async (direction) => {
                     if (t.startDate) {
                         const s = new Date(t.startDate);
                         s.setHours(0,0,0,0);
-                        if (selTime < (s.getTime() - 3 * 24 * 60 * 60 * 1000)) return false; // 提前3天显示
+                        if (selTime < (s.getTime() - 1 * 24 * 60 * 60 * 1000)) return false; // 提前1天显示
                     }
                     // 2. 结束日期检查 (仅当已完成且过期时隐藏)
                     if (t.endDate) {
@@ -2042,7 +2037,7 @@ const handleSync = async (direction) => {
             showProgressFloatBtn.value = e.target.scrollTop > 100;
         };
 
-   
+       
     return {
         isDark, 
         toggleTheme,
