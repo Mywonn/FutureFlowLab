@@ -902,7 +902,7 @@ const handleSync = async (direction) => {
                 if ([1,2,3].includes(t.q) && checkTaskVisible(t, selectedDate.value)) return false;
 
                 // 4. 【过期熔断】：已过期的隐藏
-                if (t.endDate) {
+                if (t.endDate && isTaskDone(t, selectedDate.value)) {
                     const e = new Date(t.endDate);
                     e.setHours(0,0,0,0);
                     if (selTime > e.getTime()) return false; 
