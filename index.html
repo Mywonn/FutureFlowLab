@@ -145,44 +145,7 @@
             /* 防止点击高亮导致的视觉干扰 */
             -webkit-tap-highlight-color: transparent; 
         }
-        /* 1. 容器：确保 4 个字能露出来 */
-        .marquee-box {
-            position: relative;
-            display: block;
-            overflow: hidden;
-            white-space: nowrap;
-            width: 100%;
-            /* ✅ 修改：左侧完全不透明(black)，只让右侧最后 10% 渐变透明 */
-            mask-image: linear-gradient(to right, black 90%, transparent 100%);
-            -webkit-mask-image: linear-gradient(to right, black 90%, transparent 100%);
-        }
-
-        /* 2. 动画：维持单向循环 + 精准停靠 */
-        .animate-marquee {
-            position: relative;
-            display: inline-block;
-            min-width: 100%; 
-            padding-left: 1px;
-            animation: marquee-scroll 7s linear infinite; /* 稍微减速，方便阅读 */
-        }
-
-        @keyframes marquee-scroll {
-            /* 0%-30%: 停在开头，让你看清前 4 个字 */
-            0%, 30% { 
-                left: 0;
-                transform: translateX(0);
-            }
-            /* 70%-85%: 刚好滚动到最后一个字贴住右边界，停顿约 1 秒 */
-            70%, 85% { 
-                left: 100%;
-                transform: translateX(-100%);
-            }
-            /* 95%-100%: 快速滑回开头重播 */
-            95%, 100% {
-                left: 0;
-                transform: translateX(0);
-            }
-        }
+        
         /* 优化后的样式，解决边缘漏色 */
         .swipe-container {
             position: relative;
@@ -420,27 +383,7 @@
 
     <div class="flex-1 overflow-hidden relative bg-white dark:bg-gray-900 flex flex-col">
         <div v-if="currentTab === 'lab'" class="h-full p-6 space-y-6 bg-slate-50 dark:bg-gray-950 overflow-y-auto pb-20">
-            <div v-if="showHistoryModal" class="fixed inset-0 z-[150] bg-black/50 backdrop-blur-sm flex justify-end" @click.self="showHistoryModal=false">
-                <div class="w-3/4 max-w-sm h-full bg-white dark:bg-gray-900 p-6 overflow-y-auto animate-slide-left shadow-2xl">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="font-bold text-lg text-gray-800 dark:text-white">📜 历史记录</h3>
-                        <button @click="showHistoryModal=false" class="text-2xl text-gray-400">×</button>
-                    </div>
-                    
-                    <div v-if="labHistory.length === 0" class="py-20 text-center opacity-30 text-xs">
-                        暂无历史记录
-                    </div>
-
-                    <div v-for="h in labHistory" :key="h.id" class="mb-4 bg-gray-50 dark:bg-gray-800 p-4 rounded-2xl relative border border-gray-100 dark:border-gray-700 shadow-sm">
-                        <button @click="deleteHistory(h.id)" class="absolute top-2 right-2 text-gray-300 hover:text-red-500">×</button>
-                        <div class="text-[10px] text-gray-400 mb-1">{{ h.date }}</div>
-                        <div class="font-bold text-indigo-600 mb-2">{{ h.projectName }}</div>
-                        <button @click="restoreHistory(h); showHistoryModal=false" class="mt-2 w-full bg-white dark:bg-gray-700 text-xs font-bold py-2 rounded-lg border border-gray-200 dark:border-gray-600 active:scale-95 transition">
-                            再次唤醒
-                        </button>
-                    </div>
-                </div>
-            </div>
+            
             <div class="flex justify-between items-center mb-4">
                 <div>
                     <h2 class="text-xl font-bold text-indigo-600 dark:text-indigo-400 leading-none">觉醒实验室</h2>
@@ -708,12 +651,10 @@
                             </button>
 
                             <div class="flex-1 min-w-0 pr-4"> 
-                                <div class="marquee-box w-full">
-                                    <div :class="{'animate-marquee': task.text.length > 22}"
-                                        class="font-medium text-sm text-gray-700 dark:text-gray-200 leading-relaxed inline-block truncate">
-                                        {{ task.text }}
-                                    </div>
+                                <div class="text-sm font-medium text-gray-700 dark:text-gray-200 leading-tight line-clamp-2 break-all">
+                                {{ task.text }}
                                 </div>
+                                
                                 <div v-if="task.duration > 0" class="mt-1 h-1 w-24 bg-red-100 dark:bg-gray-700 rounded-full overflow-hidden">
                                     <div class="h-full bg-blue-500 rounded-full" :style="{ width: Math.min((task.accumulated || 0) / task.duration * 100, 100) + '%' }"></div>
                                 </div>
@@ -779,12 +720,10 @@
                             </button>
 
                             <div class="flex-1 min-w-0">
-                                <div class="marquee-box w-full">
-                                    <div :class="{'animate-marquee': task.text.length > 22}"
-                                        class="font-medium text-sm text-gray-700 dark:text-gray-200 leading-relaxed inline-block truncate">
-                                        {{ task.text }}
-                                    </div>
+                                <div class="text-sm font-medium text-gray-700 dark:text-gray-200 leading-tight line-clamp-2 break-all">
+                                {{ task.text }}
                                 </div>
+                                
                                 <div v-if="task.duration > 0" class="mt-1 h-1 w-24 bg-red-100 dark:bg-gray-700 rounded-full overflow-hidden">
                                     <div class="h-full bg-blue-500 rounded-full" :style="{ width: Math.min((task.accumulated || 0) / task.duration * 100, 100) + '%' }"></div>
                                 </div>
@@ -978,11 +917,8 @@
                         </button>
 
                         <div class="flex-1 flex flex-col justify-center min-w-0 pr-10"> 
-                            <div class="marquee-box w-full">
-                                <div :class="{'animate-marquee': t.text.length > 10}" 
-                                     class="text-sm font-medium text-gray-700 dark:text-gray-200 leading-tight inline-block truncate">
-                                    {{ t.text }}
-                                </div>
+                            <div class="text-sm font-medium text-gray-700 dark:text-gray-200 leading-tight line-clamp-2 break-all">
+                            {{ t.text }}
                             </div>
                             <div v-if="t.duration > 0" class="mt-1.5 h-1 w-full bg-red-50 dark:bg-gray-600 rounded-full overflow-hidden">
                                 <div class="h-full bg-blue-500" :style="{width: Math.min((t.accumulated||0)/t.duration*100, 100) + '%'}"></div>
@@ -1146,9 +1082,9 @@
                             </div>
 
                             <div class="marquee-box flex-1 min-w-0">
-                                <div :class="{'animate-marquee': task.text.length > 12, 'opacity-50 line-through': isTaskDone(task, selectedDate)}"
-                                    class="font-bold text-gray-800 dark:text-gray-200 truncate inline-block">
-                                    {{ task.text }}
+                                <div :class="{'opacity-50 line-through': isTaskDone(task, selectedDate)}"
+                                 class="font-bold text-gray-800 dark:text-gray-200 text-sm leading-tight line-clamp-2 break-all">
+                                {{ task.text }}
                                 </div>
                             </div>
                             
@@ -1593,6 +1529,27 @@
             <button @click="showSyncModal = false" class="absolute top-4 right-4 text-gray-300 hover:text-gray-500">×</button>
         </div>
     </div>
+    <div v-if="showHistoryModal" class="fixed inset-0 z-[150] bg-black/50 backdrop-blur-sm flex justify-end" @click.self="showHistoryModal=false">
+                <div class="w-3/4 max-w-sm h-full bg-white dark:bg-gray-900 p-6 overflow-y-auto animate-slide-left shadow-2xl">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="font-bold text-lg text-gray-800 dark:text-white">📜 历史记录</h3>
+                        <button @click="showHistoryModal=false" class="text-2xl text-gray-400">×</button>
+                    </div>
+                    
+                    <div v-if="labHistory.length === 0" class="py-20 text-center opacity-30 text-xs">
+                        暂无历史记录
+                    </div>
+
+                    <div v-for="h in labHistory" :key="h.id" class="mb-4 bg-gray-50 dark:bg-gray-800 p-4 rounded-2xl relative border border-gray-100 dark:border-gray-700 shadow-sm">
+                        <button @click="deleteHistory(h.id)" class="absolute top-2 right-2 text-gray-300 hover:text-red-500">×</button>
+                        <div class="text-[10px] text-gray-400 mb-1">{{ h.date }}</div>
+                        <div class="font-bold text-indigo-600 mb-2">{{ h.projectName }}</div>
+                        <button @click="restoreHistory(h); showHistoryModal=false" class="mt-2 w-full bg-white dark:bg-gray-700 text-xs font-bold py-2 rounded-lg border border-gray-200 dark:border-gray-600 active:scale-95 transition">
+                            再次唤醒
+                        </button>
+                    </div>
+                </div>
+            </div>        
     <!-- 接入ai -->
     <div v-if="showAiConfigModal" 
         @click.self="showAiConfigModal = false" 
@@ -1713,5 +1670,4 @@
 <script type="module" src="js/app.js"></script>
 </body>
 </html>
-
 
