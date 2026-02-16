@@ -30,28 +30,25 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                 
                 if (isDark.value) {
                     html.classList.add('dark');
-                    localStorage.setItem('future_flow_theme', 'dark'); // ✅ 改名
+                    // 🚫 移除：不再保存手动状态，手动仅做测试用
+                    // localStorage.setItem('future_flow_theme', 'dark'); 
                     themeColorMeta.setAttribute('content', '#1f2937'); 
                 } else {
                     html.classList.remove('dark');
-                    localStorage.setItem('future_flow_theme', 'light'); // ✅ 改名
+                    // 🚫 移除：不再保存手动状态
+                    // localStorage.setItem('future_flow_theme', 'light');
                     themeColorMeta.setAttribute('content', '#2563eb');
                 }
             };
             // --- 持久化 & 初始化 ---
             // --- 持久化 & 初始化 ---
             onMounted(() => {
-                // 1. 读取数据 (使用新 Key)
-                const savedTheme = localStorage.getItem('future_flow_theme'); 
+                // 1. 强行跟随系统 (不再读取 localStorage)
                 const systemDarkQuery = window.matchMedia('(prefers-color-scheme: dark)');
-                const systemDark = systemDarkQuery.matches; // 👈 这里已经定义过一次了
+                const systemDark = systemDarkQuery.matches;
 
-                // 初始化判断
-                if (savedTheme === 'dark' || (!savedTheme && systemDark)) {
-                    isDark.value = true;
-                } else {
-                    isDark.value = false;
-                }
+                // 初始化直接用系统状态
+                isDark.value = systemDark;
                 updateTheme();
 
                 // 检查是否有 AI 配置，如果没有且用户点击了“实验室”，则强制弹出配置
