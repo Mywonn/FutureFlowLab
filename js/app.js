@@ -141,6 +141,7 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
             const showHistoryModal = ref(false);
             const showCompletedInbox = ref(false); // 控制已完成列表的显示/隐藏
             const showCompletedProgress = ref(false); // ✅ 新增：进度页折叠
+            const showProgressFloatBtn = ref(false);
             const showExpiredCountdown = ref(false);  // ✅ 新增：倒数日折叠
             const showCalendar = ref(false);
             const newTask = ref('');
@@ -879,6 +880,7 @@ const handleSync = async (direction) => {
             });
            
 
+            
             // ✅ 升级版 Bottom List：方案 A (去重 + Q4收容 + 未来池)
             const activeQuadrantTasks = computed(() => {
                 const sel = new Date(selectedDate.value);
@@ -888,8 +890,14 @@ const handleSync = async (direction) => {
                 return tasks.value.filter(t => {
                     // 1. 基础过滤
                     if (t.q <= 0) return false; 
-                    if (t.done) return false; 
-                    if (t.duration > 0 && (t.accumulated || 0) >= t.duration) return false; 
+                    
+                    // ❌ 删除旧代码 (旧逻辑只防住了全局完成，没防住重复任务的今日打卡)
+                    // if (t.done) return false; 
+                    // if (t.duration > 0 && (t.accumulated || 0) >= t.duration) return false; 
+
+                    // ✅ 新增核心修复：统一使用 isTaskDone 严防死守
+                    // 只要在当天算作“已完成” (包括重复任务今日已勾选)，直接隐藏！
+                    if (isTaskDone(t, selectedDate.value)) return false;
 
                     // 2. 【去重熔断】：
                     // 逻辑：如果这个任务【是 Q1-Q3】 且 【今天该做】，那它肯定在上面显示了，这里就隐藏。
@@ -902,6 +910,14 @@ const handleSync = async (direction) => {
                         const e = new Date(t.endDate);
                         e.setHours(0,0,0,0);
                         if (selTime > e.getTime()) return false; 
+                    }
+
+                    // ✅ 新增【未来熔断】：如果开始日期晚于今天，先隐藏起来，不要干扰今天的视线
+                    if (t.startDate) {
+                        const s = new Date(t.startDate);
+                        s.setHours(0,0,0,0);
+                        // 如果任务的开始时间 > 当前选中的时间，说明是未来的，隐藏！
+                        if (s.getTime() > selTime) return false;
                     }
 
                     return true;
@@ -1932,11 +1948,56 @@ const handleSync = async (direction) => {
             });
         }
         // 部署系统任务
-        if (plan.systemName) {
+        if (plan.weeklySchedule && plan.weeklySchedule.length > 0) {
+            // 💥 核心升级：如果是7天周期计划，则生成7个具体的、不同的任务
+            plan.weeklySchedule.forEach((dayPlan, index) => {
+                const targetDate = new Date();
+                targetDate.setDate(targetDate.getDate() + index); // 今天+0, 今天+1...
+                
+                // 格式化日期为 YYYY-MM-DD
+                const y = targetDate.getFullYear();
+                const m = String(targetDate.getMonth() + 1).padStart(2, '0');
+                const d = String(targetDate.getDate()).padStart(2, '0');
+                const dateStr = `${y}-${m}-${d}`;
+
+                // 将该天的 tasks (数组) 转为子任务结构
+                const dailySubtasks = (dayPlan.tasks || []).map(t => ({
+                    id: Date.now() + Math.random(),
+                    text: t, // 例如 "早餐吃鸡蛋", "运动做深蹲"
+                    done: false
+                }));
+
+                setTimeout(() => {
+                    tasks.value.push({
+                        id: Date.now() + Math.random(),
+                        // 任务名：[周一] 核心激活 (系统名)
+                        // 我们把 D1, D2 映射为具体的星期几，体验更好
+                        text: `[周${"日一二三四五六".charAt(targetDate.getDay())}] ${dayPlan.theme} (${plan.systemName})`,
+                        q: 2, 
+                        done: false,
+                        date: formatDateKey(targetDate), // 初始显示在这一天
+                        duration: plan.duration || 0.5,
+                        
+                        startDate: dateStr, // 从这一天开始生效
+                        endDate: '',        // ✅ 修改1：留空！代表“永久有效”，不会过期
+                        
+                        repeat: 'week',     // ✅ 修改2：开启“每周重复”
+                        repeatInterval: 1,  // 每1周重复一次
+                        
+                        expanded: false,
+                        subtasks: dailySubtasks
+                    });
+                }, index * 50);
+            });
+            
+            alert(`已为你生成未来 ${plan.weeklySchedule.length} 天的定制计划！请去四象限查看。`);
+
+        } else if (plan.systemName) {
+            // ... (这里保留原来的旧逻辑，作为没有 weeklySchedule 时的兜底) ...
             setTimeout(() => {
-                tasks.value.push({
+                 tasks.value.push({
                     id: Date.now() + 1,
-                    text: plan.systemName,
+                    text: plan.routine || plan.systemName, 
                     q: 2,
                     done: false,
                     duration: plan.duration || 0.5,
@@ -1945,7 +2006,7 @@ const handleSync = async (direction) => {
                     repeat: plan.frequency || 'day',
                     repeatInterval: 1,
                     expanded: true,
-                    subtasks: subtasks // 里程碑
+                    subtasks: subtasks 
                 });
             }, 10);
         }
@@ -1979,18 +2040,26 @@ const handleSync = async (direction) => {
         web3Project.value.suggestedSteps = [];
     };
 
-    // 🚀 终极合并：确保所有东西都在这一个 return 里！
+    const handleProgressScroll = (e) => {
+            // 当滚动超过 100px 时显示返回按钮
+            showProgressFloatBtn.value = e.target.scrollTop > 100;
+        };
+
+   
     return {
         isDark, 
         toggleTheme,
         identities, activeIdentity, web3Project, saveIdentities,
         showHistoryModal,
-        currentTab, showCalendar, toggleCalendar: () => showCalendar.value = !showCalendar.value,
+        currentTab, showProgressFloatBtn,showCalendar, toggleCalendar: () => showCalendar.value = !showCalendar.value,
         stripDays, handleHeaderTouchStart, handleHeaderTouchEnd,
         dateScrollContainer, touchStart, touchEnd,
         isFocusing, newTask, newDuration, tasks,
         activeProgressTasks, completedProgressTasks, handleProgressComplete,
         activeInboxTasks, completedInboxTasks, activeRecurringQuadrantTasks, activeQuadrantTasks,
+        showCompletedInbox,      // 修复专注页已完成点不开
+        showCompletedProgress,   // 修复进度页已完成点不开
+        showExpiredCountdown,    // 修复倒数日过期点不开
         displayUpcomingList, homeUpcomingList, upcomingList, expiredList, upcomingScroll, pauseUpcoming, resumeUpcoming,
         quadrantTitles, progressStats, progressTasks, 
         currentYear, currentMonth, lunarMonthStr, daysInMonth, firstDayOfWeek,
@@ -2012,7 +2081,7 @@ const handleSync = async (direction) => {
         showAddIdentityModal, showEditIdentityModal, newIdentityInput, editIdentityInput,
         openAddIdentityModal, confirmAddIdentity, confirmEditIdentity, deleteIdentity,
         startIdentityPress, clearIdentityPress,isAnalyzing, runAiAnalysis, startEvolution,isStrategyMode,
-        labHistory, addToHistory, deleteHistory, restoreHistory,
+        labHistory, addToHistory, deleteHistory, restoreHistory,handleProgressScroll,
     };
         } // 结束 setup
     }); // 结束 createApp 定义
