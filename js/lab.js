@@ -30,7 +30,14 @@ export const STRATEGY_PROMPT = `
     {
       "type": "🐢 稳健型",
       "analysis": "简短评估...",
-      "systemName": "Q2任务名",
+      "systemName": "系统代号",
+      // 💥 核心升级：不再是一句话，而是7天的数组
+      "weeklySchedule": [
+        // ✅ 提示 AI：请设计一周循环课表，包含训练日和休息日，注重饮食与运动的结合
+        { "day": 1, "theme": "核心激活", "tasks": ["死虫式20次", "碳水循环: 低碳日"] },
+        // ... (Day 2 - Day 6)  
+        { "day": 7, "theme": "主动休息", "tasks": ["冥想10分钟", "饮食: 欺骗餐(Cheat Meal)"] }, 
+      ],
       "frequency": "day",
       "duration": 0.5,
       "setupAction": "今日启动动作",
