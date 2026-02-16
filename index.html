@@ -203,6 +203,32 @@
         .animate-slide-up {
             animation: slide-up 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
         }
+        /* 2. 动画：维持单向循环 + 精准停靠 */
+        .animate-marquee {
+            position: relative;
+            display: inline-block;
+            min-width: 100%; 
+            padding-left: 1px;
+            animation: marquee-scroll 7s linear infinite; /* 稍微减速，方便阅读 */
+        }
+
+        @keyframes marquee-scroll {
+            /* 0%-30%: 停在开头，让你看清前 4 个字 */
+            0%, 30% { 
+                left: 0;
+                transform: translateX(0);
+            }
+            /* 70%-85%: 刚好滚动到最后一个字贴住右边界，停顿约 1 秒 */
+            70%, 85% { 
+                left: 100%;
+                transform: translateX(-100%);
+            }
+            /* 95%-100%: 快速滑回开头重播 */
+            95%, 100% {
+                left: 0;
+                transform: translateX(0);
+            }
+        }
     </style> 
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 h-screen w-screen overflow-hidden flex flex-col font-sans transition-colors duration-300">
@@ -651,9 +677,10 @@
                             </button>
 
                             <div class="flex-1 min-w-0 pr-4"> 
-                                <div class="text-sm font-medium text-gray-700 dark:text-gray-200 leading-tight line-clamp-2 break-all">
+                            <div class="text-sm font-medium text-gray-700 dark:text-gray-200 leading-tight transition-all duration-200"
+                                 :class="task.expanded ? 'line-clamp-2 whitespace-normal break-all' : 'truncate'">
                                 {{ task.text }}
-                                </div>
+                            </div>
                                 
                                 <div v-if="task.duration > 0" class="mt-1 h-1 w-24 bg-red-100 dark:bg-gray-700 rounded-full overflow-hidden">
                                     <div class="h-full bg-blue-500 rounded-full" :style="{ width: Math.min((task.accumulated || 0) / task.duration * 100, 100) + '%' }"></div>
@@ -720,9 +747,10 @@
                             </button>
 
                             <div class="flex-1 min-w-0">
-                                <div class="text-sm font-medium text-gray-700 dark:text-gray-200 leading-tight line-clamp-2 break-all">
+                            <div class="text-sm font-medium text-gray-700 dark:text-gray-200 leading-tight transition-all duration-200"
+                                 :class="task.expanded ? 'line-clamp-2 whitespace-normal break-all' : 'truncate'">
                                 {{ task.text }}
-                                </div>
+                            </div>
                                 
                                 <div v-if="task.duration > 0" class="mt-1 h-1 w-24 bg-red-100 dark:bg-gray-700 rounded-full overflow-hidden">
                                     <div class="h-full bg-blue-500 rounded-full" :style="{ width: Math.min((task.accumulated || 0) / task.duration * 100, 100) + '%' }"></div>
@@ -860,7 +888,7 @@
                             <div class="mb-0.5 w-full">
                                 <div class="marquee-box w-full">
                                     <span class="text-xs font-bold text-gray-700 dark:text-gray-200"
-                                        :class="{'animate-marquee': day.name.length > 4}">
+                                        :class="{'animate-marquee': day.name.length > 5}">
                                         {{ day.name }}
                                     </span>
                                 </div>
