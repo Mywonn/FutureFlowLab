@@ -843,9 +843,11 @@
                 </div>
             </div>
 
-            <div class="shrink-0 bg-gray-50 dark:bg-gray-950 transition-all duration-500 cubic-bezier(0.25, 1, 0.5, 1) relative rounded-t-2xl shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)] z-20 overflow-hidden flex flex-col"
-                 :class="isBottomPanelExpanded ? 'h-40' : 'h-7'"
-                 style="touch-action: none;">
+            <div class="shrink-0 transition-all duration-500 cubic-bezier(0.25, 1, 0.5, 1) relative rounded-t-2xl z-20 overflow-hidden flex flex-col"
+                :class="isBottomPanelExpanded 
+                    ? 'h-40 bg-gray-50 dark:bg-gray-950 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)]' 
+                    : 'h-7 bg-transparent'"
+                style="touch-action: none;">
                 
                 <div class="h-7 w-full flex items-center justify-center shrink-0 cursor-pointer active:bg-gray-100 dark:active:bg-gray-800 transition-colors z-30"
                      @click="toggleBottomPanel"
