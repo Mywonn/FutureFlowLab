@@ -843,34 +843,34 @@
                 </div>
             </div>
 
-            <div class="shrink-0 transition-all duration-500 cubic-bezier(0.25, 1, 0.5, 1) relative rounded-t-2xl z-20 overflow-hidden flex flex-col"
-                :class="isBottomPanelExpanded 
-                    ? 'h-40 bg-gray-50 dark:bg-gray-950 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)]' 
+           <div class="shrink-0 transition-all duration-500 cubic-bezier(0.25, 1, 0.5, 1) relative rounded-t-3xl z-20 overflow-hidden flex flex-col"
+                 :class="isBottomPanelExpanded 
+                    ? 'h-40 bg-white dark:bg-gray-900 shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.1)]' 
                     : 'h-7 bg-transparent'"
-                style="touch-action: none;">
+                 style="touch-action: none;">
                 
-                <div class="h-7 w-full flex items-center justify-center shrink-0 cursor-pointer active:bg-gray-100 dark:active:bg-gray-800 transition-colors z-30"
+                <div class="h-7 w-full flex items-center justify-center shrink-0 cursor-pointer transition-colors z-30"
                      @click="toggleBottomPanel"
                      @touchstart="handlePanelTouchStart"
                      @touchend="handlePanelTouchEnd">
                     
                     <div class="w-12 h-1.5 rounded-full transition-all duration-500"
                          :class="isBottomPanelExpanded 
-                            ? 'bg-gray-300 dark:bg-gray-700' 
-                            : 'bg-indigo-400 dark:bg-indigo-500 animate-hint-bounce w-16'">
+                            ? 'bg-gray-200 dark:bg-gray-700' 
+                            : 'bg-indigo-500 dark:bg-indigo-400 animate-hint-bounce w-16 shadow-lg shadow-indigo-200 dark:shadow-none'">
                     </div>
                 </div>
 
-                <div class="flex-1 grid grid-cols-2 gap-0 px-4 pb-3 transition-opacity duration-300 overflow-hidden"
+                <div class="flex-1 grid grid-cols-2 gap-0 px-4 pb-3 transition-opacity duration-300 overflow-hidden bg-white dark:bg-gray-900"
                      :class="isBottomPanelExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'">
                     
-                    <div class="flex flex-col overflow-hidden border-r border-gray-200 dark:border-gray-800 pr-3" @dblclick.stop>
+                    <div class="flex flex-col overflow-hidden border-r border-gray-100 dark:border-gray-800 pr-3" @dblclick.stop>
                         <div class="pb-2 flex items-center justify-between shrink-0">
                              <div class="flex items-center">
                                 <div class="h-2 w-2 bg-orange-400 rounded-full mr-2"></div>
-                                <span class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">四象限</span>
+                                <span class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">四象限</span>
                              </div>
-                             <button @click="currentTab='quadrant'" class="text-[10px] text-blue-500 font-bold">全部 ></button>
+                             <button @click="currentTab='quadrant'" class="text-[10px] text-blue-500 font-bold hover:opacity-80 transition">全部 ></button>
                         </div>
                         
                         <div class="flex-1 grid grid-rows-2 grid-flow-col gap-2 auto-cols-[90%] overflow-x-auto no-scrollbar items-center pb-1">
@@ -878,12 +878,12 @@
                              
                              <div v-for="task in activeQuadrantTasks" :key="task.id" 
                                   @click="handleTileClick(task)"
-                                  class="flex items-center justify-between w-full h-full rounded-xl px-3 py-1.5 relative active:scale-95 transition-transform shadow-sm"
+                                  class="flex items-center justify-between w-full h-full rounded-xl px-3 py-1.5 relative active:scale-95 transition-transform border border-gray-50 dark:border-gray-800"
                                   :class="{
-                                    'bg-red-50/80 dark:bg-red-900/20': task.q===1,
-                                    'bg-blue-50/80 dark:bg-blue-900/20': task.q===2,
-                                    'bg-yellow-50/80 dark:bg-yellow-900/20': task.q===3,
-                                    'bg-white dark:bg-gray-800': task.q===4
+                                    'bg-red-50 dark:bg-red-900/20': task.q===1,
+                                    'bg-blue-50 dark:bg-blue-900/20': task.q===2,
+                                    'bg-yellow-50 dark:bg-yellow-900/20': task.q===3,
+                                    'bg-gray-50 dark:bg-gray-800': task.q===4
                                   }">
                                 
                                 <button @touchstart.stop @click.stop="toggleTask(task)" class="mr-2 shrink-0 p-1 -ml-1 opacity-60">
@@ -913,7 +913,7 @@
                     <div class="flex flex-col overflow-hidden pl-3" @dblclick.stop>
                         <div class="pb-2 flex items-center shrink-0">
                             <div class="h-2 w-2 bg-pink-400 rounded-full mr-2"></div>
-                            <span class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">近期重要</span>
+                            <span class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">近期重要</span>
                         </div>
 
                         <div ref="upcomingScroll" 
@@ -923,7 +923,7 @@
                             <div v-if="homeUpcomingList.length === 0" class="w-full text-xs text-gray-300 text-center py-6">无近期事项</div>
                             
                             <div v-for="(day, index) in displayUpcomingList" :key="index" 
-                                class="inline-flex flex-col shrink-0 w-[43%] h-full bg-blue-50/60 dark:bg-gray-800 rounded-2xl px-2 py-2.5 relative overflow-hidden active:scale-95 transition-transform border border-gray-100 dark:border-gray-800/50">
+                                class="inline-flex flex-col shrink-0 w-[43%] h-full bg-blue-50/60 dark:bg-gray-800 rounded-2xl px-2 py-2.5 relative overflow-hidden active:scale-95 transition-transform border border-blue-100 dark:border-gray-800">
                                 
                                 <div class="absolute -right-2 -bottom-2 text-5xl opacity-[0.03] select-none pointer-events-none rotate-12">⏳</div>
 
