@@ -2037,7 +2037,33 @@ const handleSync = async (direction) => {
             showProgressFloatBtn.value = e.target.scrollTop > 100;
         };
 
-       
+    // --- 🚀 新增：底部四象限面板折叠逻辑 ---
+            const isBottomPanelExpanded = ref(true); // 默认展开
+
+            // 简单的切换函数
+            const toggleBottomPanel = () => {
+                isBottomPanelExpanded.value = !isBottomPanelExpanded.value;
+                if(navigator.vibrate) navigator.vibrate(10); // 微震动反馈
+            };
+
+            // 处理把手的滑动手势 (简单的 Y 轴判断)
+            let panelTouchStartY = 0;
+            const handlePanelTouchStart = (e) => {
+                panelTouchStartY = e.touches[0].clientY;
+            };
+            const handlePanelTouchEnd = (e) => {
+                const deltaY = e.changedTouches[0].clientY - panelTouchStartY;
+                const threshold = 30; // 滑动阈值
+
+                if (deltaY > threshold && isBottomPanelExpanded.value) {
+                    // 向下滑 -> 收起
+                    isBottomPanelExpanded.value = false;
+                } else if (deltaY < -threshold && !isBottomPanelExpanded.value) {
+                    // 向上滑 -> 展开
+                    isBottomPanelExpanded.value = true;
+                }
+            }; 
+        
     return {
         isDark, 
         toggleTheme,
@@ -2074,6 +2100,7 @@ const handleSync = async (direction) => {
         openAddIdentityModal, confirmAddIdentity, confirmEditIdentity, deleteIdentity,
         startIdentityPress, clearIdentityPress,isAnalyzing, runAiAnalysis, startEvolution,isStrategyMode,
         labHistory, addToHistory, deleteHistory, restoreHistory,handleProgressScroll,
+        isBottomPanelExpanded, toggleBottomPanel, handlePanelTouchStart, handlePanelTouchEnd,
     };
         } // 结束 setup
     }); // 结束 createApp 定义
