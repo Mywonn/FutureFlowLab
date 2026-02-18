@@ -849,13 +849,14 @@ const handleSync = async (direction) => {
             
             // ✅ 修改：拆分进行中和已完成任务
             const activeInboxTasks = computed(() => {
-                const key = formatDateKey(selectedDate.value);
-                return tasks.value.filter(t => t.q === 0 && t.date === key && !isTaskDone(t, selectedDate.value));
+                // ✅ 新逻辑：只要 checkTaskVisible 说今天该做，就显示！
+                // 这样既支持手动加的(有date)，也支持AI加的(有startDate)
+                return tasks.value.filter(t => t.q === 0 && checkTaskVisible(t, selectedDate.value) && !isTaskDone(t, selectedDate.value));
             });
 
             const completedInboxTasks = computed(() => {
-                const key = formatDateKey(selectedDate.value);
-                return tasks.value.filter(t => t.q === 0 && t.date === key && isTaskDone(t, selectedDate.value));
+                // ✅ 新逻辑同上
+                return tasks.value.filter(t => t.q === 0 && checkTaskVisible(t, selectedDate.value) && isTaskDone(t, selectedDate.value));
             });
 
             
@@ -1930,7 +1931,7 @@ const handleSync = async (direction) => {
             tasks.value.unshift({
                 id: Date.now(),
                 text: `🚀 [启动] ${plan.setupAction}`,
-                q: 0,
+                q: 2,  // ✅ 改为 Q2 (重要不紧急)
                 done: false,
                 duration: 0.5,
                 startDate: todayStr,
@@ -1939,6 +1940,7 @@ const handleSync = async (direction) => {
                 subtasks: []
             });
         }
+        
         // 部署系统任务
         if (plan.weeklySchedule && plan.weeklySchedule.length > 0) {
             // 💥 核心升级：如果是7天周期计划，则生成7个具体的、不同的任务
