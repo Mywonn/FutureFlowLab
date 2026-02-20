@@ -2124,6 +2124,37 @@ const handleSync = async (direction) => {
                 }
             }; 
         
+            // === 🌟 年度愿景板逻辑 ===
+            const showYearlyGoals = ref(false);
+            const isEditingWishes = ref(false);
+            
+            // 💡 独立保存的标题（不再与今年系统时间强绑定）
+            const visionTitle = ref(localStorage.getItem('ff_vision_title') || new Date().getFullYear().toString());
+
+            const defaultWishes = [
+                { id: 1, icon: '🗣️', title: '流利的英语口语交流者', desc: 'Fluent English Speaker' },
+                { id: 2, icon: '💻', title: '深耕跨境电商探索', desc: 'Cross-border E-commerce' },
+                { id: 3, icon: '😎', title: '保持帅气', desc: 'Stay Handsome' }
+            ];
+
+            const yearlyWishes = ref(JSON.parse(localStorage.getItem('ff_yearly_wishes')) || defaultWishes);
+
+            // 监听数据变化并保存到本地
+            watch([yearlyWishes, visionTitle], () => {
+                localStorage.setItem('ff_yearly_wishes', JSON.stringify(yearlyWishes.value));
+                localStorage.setItem('ff_vision_title', visionTitle.value);
+            }, { deep: true });
+
+            const addWish = () => {
+                yearlyWishes.value.push({ id: Date.now(), icon: '🎯', title: '', desc: '' });
+            };
+
+            const deleteWish = (id) => {
+                if(confirm('确定要删除这个愿望吗？')) {
+                    yearlyWishes.value = yearlyWishes.value.filter(w => w.id !== id);
+                }
+            };
+
     return {
         isDark, 
         toggleTheme,
@@ -2161,6 +2192,7 @@ const handleSync = async (direction) => {
         startIdentityPress, clearIdentityPress,isAnalyzing, runAiAnalysis, startEvolution,isStrategyMode,
         labHistory, addToHistory, deleteHistory, restoreHistory,handleProgressScroll,
         isBottomPanelExpanded, toggleBottomPanel, handlePanelTouchStart, handlePanelTouchEnd,
+        showYearlyGoals, isEditingWishes, yearlyWishes, visionTitle, addWish, deleteWish,
     };
         } // 结束 setup
     }); // 结束 createApp 定义
