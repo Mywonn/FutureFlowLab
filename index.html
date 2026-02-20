@@ -281,39 +281,44 @@
     <div class="relative bg-blue-600 dark:bg-gray-800 text-white shadow-md z-40 flex-shrink-0 transition-all duration-300 border-b dark:border-gray-700 safe-top">
         
         <div class="flex flex-col w-full">
-            <div class="px-4 pt-3 pb-1 flex justify-between items-center relative">
+            <div class="px-4 py-2 flex justify-between items-center relative">
                 
                 <div class="flex items-center space-x-2 z-50">
                     <div class="flex justify-start items-center" @click="handleLogoClick">
                         <img src="img/logo.png" alt="Logo" class="w-8 h-8 object-contain rounded-lg bg-white/10 backdrop-blur-sm border border-white/10 shadow-sm transition-transform duration-200" :class="{'scale-75': isLogoAnimating}">
                     </div>
-                    
-                    </div>
-
-                
-
-                <div class="absolute left-1/2 -translate-x-1/2 z-50">
-                    <div @click="handleTimerClick" class="bg-blue-700/50 dark:bg-gray-700/50 hover:bg-blue-700 dark:hover:bg-gray-700 rounded-full px-3 py-1.5 flex items-center space-x-2 cursor-pointer transition border border-blue-500/30 backdrop-blur-sm min-w-[6rem] justify-center select-none">
-                        <span class="font-mono font-bold text-lg leading-none">
-                            {{ isFocusing ? formatTime(timeLeft) : defaultDuration + ':00' }}
-                        </span>
-                        <span v-if="isFocusing" class="text-xs text-red-300 animate-pulse">■</span>
-                        <span v-else class="text-[10px] opacity-70">▼</span>
-                    </div>
-
-                    <div v-if="showTimeSelect" class="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-32 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden animate-scale-up origin-top">
-                        <div class="grid grid-cols-2 gap-1 p-1">
-                            <div v-for="m in [10, 15, 25, 30, 45, 60]" :key="m" @click="setDuration(m)" class="py-2 text-center text-sm font-bold rounded-lg cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-700 transition" :class="defaultDuration === m ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-gray-700' : 'text-gray-600 dark:text-gray-300'">{{ m }}</div>
-                        </div>
-                    </div>
-                    <div v-if="showTimerAction" class="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-28 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden animate-scale-up origin-top p-1 space-y-1">
-                        <button @click="stopTimer(true)" class="w-full py-2 text-xs font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700">完成并记录</button>
-                        <button @click="stopTimer(false)" class="w-full py-2 text-xs text-gray-500 hover:text-red-500 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg">放弃</button>
-                    </div>
-                    <div v-if="showTimeSelect || showTimerAction" @click="closeTimerMenus" class="fixed inset-0 z-[-1]"></div>
                 </div>
 
-                <div class="flex items-center space-x-3">
+                <div class="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-50 flex items-center justify-center">
+                    
+                    <div v-if="currentTab === 'now'" class="relative">
+                        <div @click="handleTimerClick" class="bg-blue-700/50 dark:bg-gray-700/50 hover:bg-blue-700 dark:hover:bg-gray-700 rounded-full px-3 py-1.5 flex items-center space-x-2 cursor-pointer transition border border-blue-500/30 backdrop-blur-sm min-w-[6rem] justify-center select-none">
+                            <span class="font-mono font-bold text-lg leading-none">
+                                {{ isFocusing ? formatTime(timeLeft) : defaultDuration + ':00' }}
+                            </span>
+                            <span v-if="isFocusing" class="text-xs text-red-300 animate-pulse">■</span>
+                            <span v-else class="text-[10px] opacity-70">▼</span>
+                        </div>
+
+                        <div v-if="showTimeSelect" class="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-32 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden animate-scale-up origin-top">
+                            <div class="grid grid-cols-2 gap-1 p-1">
+                                <div v-for="m in [10, 15, 25, 30, 45, 60]" :key="m" @click="setDuration(m)" class="py-2 text-center text-sm font-bold rounded-lg cursor-pointer hover:bg-blue-50 dark:hover:bg-gray-700 transition" :class="defaultDuration === m ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-gray-700' : 'text-gray-600 dark:text-gray-300'">{{ m }}</div>
+                            </div>
+                        </div>
+                        <div v-if="showTimerAction" class="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-28 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden animate-scale-up origin-top p-1 space-y-1">
+                            <button @click="stopTimer(true)" class="w-full py-2 text-xs font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700">完成并记录</button>
+                            <button @click="stopTimer(false)" class="w-full py-2 text-xs text-gray-500 hover:text-red-500 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg">放弃</button>
+                        </div>
+                        <div v-if="showTimeSelect || showTimerAction" @click="closeTimerMenus" class="fixed inset-0 z-[-1]"></div>
+                    </div>
+
+                    <button v-else @click="showYearlyGoals = true" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full border border-white/20 flex items-center space-x-1.5 active:scale-95 transition-all shadow-sm">
+                        <span class="text-sm leading-none">🎯</span>
+                        <span class="text-xs font-bold text-white tracking-widest">{{ visionTitle }} 愿景</span>
+                    </button>
+                </div>
+
+                <div class="flex items-center space-x-3 z-50">
                     <button @click="showSyncModal = true" class="opacity-80 hover:opacity-100 transition p-1">
                         <span v-if="syncStatus === 'success'" class="text-green-300">☁️√</span>
                         <span v-else-if="syncStatus === 'loading'" class="animate-pulse">☁️...</span>
@@ -1700,39 +1705,61 @@
         </div>
     </div>
 
-    <div v-if="showProgressModal" class="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in px-4" @click.self="showProgressModal = false">
-        <div class="bg-white dark:bg-gray-800 w-full max-w-[16rem] rounded-2xl overflow-hidden shadow-2xl animate-scale-up border dark:border-gray-700 transition-all">
+    <div v-if="showYearlyGoals" class="absolute inset-0 z-[80] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in px-4" @click.self="showYearlyGoals = false">
+        <div class="bg-gray-50 dark:bg-gray-900 w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl animate-scale-up border dark:border-gray-800 transition-all flex flex-col max-h-[80vh]">
             
-            <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800">
-                <span class="font-bold text-sm text-gray-800 dark:text-gray-100">调整工时</span>
-                <button @click="showProgressModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">×</button>
-            </div>
-            
-            <div class="p-5 text-center">
-                <div class="mb-4">
-                <div class="text-xs text-gray-500 dark:text-gray-400 truncate px-2 mb-1">
-                    任务: <span class="font-bold text-gray-700 dark:text-gray-300">{{ progressForm.taskText }}</span>
-                </div>
-                <div class="text-[10px] text-gray-400 bg-gray-100 dark:bg-gray-700/50 py-1 rounded-lg inline-block px-3">
-                    当前累计: <span class="font-mono font-bold text-blue-500">{{ (tasks.find(t=>t.id===progressForm.taskId)?.accumulated || 0).toFixed(1) }}h</span>
-                </div>
-            </div>
-
-            
+            <div class="bg-gradient-to-br from-blue-600 to-indigo-600 px-6 py-8 text-center relative overflow-hidden shrink-0">
+                <div class="absolute -right-4 -top-4 text-7xl opacity-10 rotate-12 select-none">🏔️</div>
                 
-                <div class="flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-xl px-4 py-3 mx-4 mb-4 border border-transparent focus-within:border-blue-500 focus-within:bg-white dark:focus-within:bg-gray-800 transition-all">
-                    <input ref="progressInputRef" 
-                           v-model="progressForm.hours" 
-                           type="number" 
-                           step="1" 
-                           placeholder="新增分钟" 
-                           class="w-24 bg-transparent text-2xl font-bold text-blue-600 dark:text-blue-400 outline-none text-center placeholder-gray-300 dark:placeholder-gray-600"
-                           @keyup.enter="saveTaskProgress">
-                    <span class="text-sm text-gray-400 font-bold ml-1 pt-1">min</span>
+                <button @click="isEditingWishes = !isEditingWishes" class="absolute top-4 right-4 z-20 text-white/80 hover:text-white text-xs font-bold px-3 py-1 bg-black/20 rounded-lg backdrop-blur-sm transition-colors">
+                    {{ isEditingWishes ? '完成' : '编辑' }}
+                </button>
+
+                <h3 v-if="!isEditingWishes" class="text-xl font-black text-white tracking-widest mb-1 relative z-10">{{ visionTitle }} 愿景板</h3>
+                <div v-else class="relative z-10 flex justify-center mb-1">
+                    <input v-model="visionTitle" class="bg-white/20 text-white font-black text-xl text-center rounded outline-none border border-white/30 px-2 w-32 placeholder-white/50" placeholder="年份/标题">
+                </div>
+                
+                <p class="text-[10px] text-blue-100 font-mono tracking-widest relative z-10">YEARLY VISION BOARD</p>
+            </div>
+            
+            <div class="p-5 space-y-3 bg-white dark:bg-gray-800 relative -mt-4 rounded-t-3xl overflow-y-auto no-scrollbar flex-1">
+                
+                <div v-for="wish in yearlyWishes" :key="wish.id" class="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 transition-all">
+                    
+                    <div v-if="!isEditingWishes" class="flex items-start">
+                        <span class="text-2xl mr-3 leading-none">{{ wish.icon }}</span>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-bold text-sm text-gray-800 dark:text-white truncate">{{ wish.title }}</h4>
+                            <p class="text-[10px] text-gray-400 mt-1 truncate">{{ wish.desc }}</p>
+                        </div>
+                    </div>
+
+                    <div v-else class="space-y-2">
+                        <div class="flex space-x-2">
+                            <input v-model="wish.icon" placeholder="Emoji" class="w-12 h-9 text-center bg-white dark:bg-gray-800 rounded-lg outline-none text-lg border border-gray-200 dark:border-gray-600 focus:border-blue-500">
+                            <input v-model="wish.title" placeholder="核心目标" class="flex-1 h-9 bg-white dark:bg-gray-800 rounded-lg px-3 outline-none text-sm font-bold text-gray-800 dark:text-white border border-gray-200 dark:border-gray-600 focus:border-blue-500">
+                        </div>
+                        <div class="flex space-x-2 items-center">
+                            <input v-model="wish.desc" placeholder="补充描述 (选填)" class="flex-1 h-8 bg-white dark:bg-gray-800 rounded-lg px-3 outline-none text-xs text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 focus:border-blue-500">
+                            <button @click="deleteWish(wish.id)" class="text-red-500 bg-red-50 dark:bg-red-900/20 px-3 h-8 rounded-lg text-xs font-bold active:scale-95 transition-transform">删除</button>
+                        </div>
+                    </div>
                 </div>
 
-                <button @click="saveTaskProgress" class="w-full bg-blue-600 text-white py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-blue-500/30 active:scale-95 transition-transform">
-                    确认
+                <button v-if="isEditingWishes" @click="addWish" class="w-full py-3 border-2 border-dashed border-gray-200 dark:border-gray-600 text-gray-400 hover:text-blue-500 hover:border-blue-500 rounded-2xl text-xs font-bold transition-colors flex items-center justify-center space-x-1">
+                    <span class="text-base leading-none">+</span>
+                    <span>添加新愿望</span>
+                </button>
+                
+                <div v-if="yearlyWishes.length === 0 && !isEditingWishes" class="text-center py-10 opacity-30 text-gray-500 text-xs">
+                    暂无愿景，点击右上角“编辑”添加
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 px-5 pb-5 pt-2 shrink-0">
+                <button @click="showYearlyGoals = false" class="w-full py-3.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl font-bold text-sm active:scale-95 transition-transform">
+                    关闭
                 </button>
             </div>
         </div>
