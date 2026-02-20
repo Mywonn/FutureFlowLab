@@ -16,7 +16,7 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                 labHistory, addToHistory, deleteHistory, restoreHistory // 👈 新增
             } = useLab();
 
-            // --- 3. 夜间模式逻辑 ---
+            // --- 3. 夜间模式逻辑 --- 
             const isDark = ref(false);
 
             const toggleTheme = () => {
@@ -2193,3 +2193,4 @@ const handleSync = async (direction) => {
         }, 100);
 
     });
+
