@@ -680,7 +680,9 @@
             </div>
 
             <div class="flex-1 flex flex-col min-h-0 overflow-hidden relative">
-                <div class="flex-1 overflow-y-auto px-4 pt-2 pb-32 space-y-2">
+                <div class="flex-1 overflow-y-auto px-4 pt-2 pb-32 space-y-2"
+                        @touchstart="handlePageTouchStart"
+                        @touchend="handlePageTouchEnd">
                     <div v-for="task in activeRecurringQuadrantTasks" :key="task.id" 
                         class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm mb-2.5 overflow-hidden transition-all duration-300 ring-1 ring-gray-100/50 dark:ring-white/5 hover:shadow-md relative group">
                         
@@ -958,7 +960,9 @@
         
 <div v-if="currentTab === 'quadrant'" class="h-full flex flex-col overflow-hidden bg-gray-100 dark:bg-gray-900">
     
-    <div class="flex-1 quadrant-grid text-sm overflow-hidden">
+    <div class="flex-1 quadrant-grid text-sm overflow-hidden"
+            @touchstart="handlePageTouchStart"
+            @touchend="handlePageTouchEnd">
         <div v-for="q in [1,2,3,4]" :key="q" class="q-cell relative group flex flex-col overflow-hidden"
              :class="{'border-b border-r border-red-100 dark:border-red-900/30': q===1, 'border-b border-blue-100 dark:border-blue-900/30': q===2, 'border-r border-yellow-100 dark:border-yellow-900/30': q===3, 'border-gray-100 dark:border-gray-700': q===4}">
             
