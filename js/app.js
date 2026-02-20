@@ -16,7 +16,7 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                 labHistory, addToHistory, deleteHistory, restoreHistory // 👈 新增
             } = useLab();
 
-            // --- 3. 夜间模式逻辑 --- 
+            // --- 3. 夜间模式逻辑 ---
             const isDark = ref(false);
 
             const toggleTheme = () => {
@@ -222,9 +222,19 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
 
             // 🚀 新增 2：计算所有象限已完成的任务 (过滤 q > 0 的)
             const allCompletedTasks = computed(() => {
+                const currentKey = formatDateKey(selectedDate.value);
+                
                 return tasks.value.filter(t => {
                     // 只要是象限任务，且在当前日期是“已完成”状态的
-                    return t.q > 0 && isTaskDone(t, selectedDate.value);
+                    if (t.q <= 0 || !isTaskDone(t, selectedDate.value)) return false;
+
+                    // 🎯 核心修复：防止一次性任务在未来每天“诈尸”
+                    // 如果是一次性任务，它的创建日期 (date) 或开始日期必须是今天才显示
+                    if (!t.repeat || t.repeat === 'none') {
+                        return t.date === currentKey || t.startDate === currentKey;
+                    }
+                    
+                    return true;
                 }).map(t => {
                     // 记录一下完成时间显示
                     let timeStr = '今日已完成';
@@ -532,21 +542,22 @@ const handleSync = async (direction) => {
                 // 遍历所有任务，统计已完成的
                 return tasks.value.reduce((count, t) => {
                     // 1. 核心判断：这个任务在“选中的这天”是完成状态吗？
-                    // (isTaskDone 函数已经完美处理了普通任务和重复任务的区别)
                     if (!isTaskDone(t, selectedDate.value)) return count;
 
                     // 2. 归属判断：
-                    // 如果是 Inbox (Q0) 任务，必须日期也匹配才算
                     if (t.q === 0) {
                         return t.date === key ? count + 1 : count;
                     }
                     
-                    // 如果是 四象限 (Q1-4) 任务，只要完成了就算
-                    // (重复任务通过 isTaskDone 判断，一次性任务完成了就算总成就)
+                    // 🎯 核心修复：四象限 (Q1-4) 的一次性任务，也必须属于这天才算数
+                    if (!t.repeat || t.repeat === 'none') {
+                        return (t.date === key || t.startDate === key) ? count + 1 : count;
+                    }
+
+                    // 重复任务如果 isTaskDone 为 true，说明当天打卡了，直接算成就
                     return count + 1;
                 }, 0);
             });
-            // --- 修复开始：完整的任务添加与编辑逻辑 ---
 
             // 1. 定义【新建任务】的弹窗状态和表单
             const showQuadrantModal = ref(false);
@@ -2193,4 +2204,3 @@ const handleSync = async (direction) => {
         }, 100);
 
     });
-
