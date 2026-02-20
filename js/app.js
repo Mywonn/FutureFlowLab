@@ -1140,6 +1140,7 @@ const handleSync = async (direction) => {
 
             // === ⬇️ 在这里添加滑动逻辑代码 ⬇️ ===
             const touchStartX = ref(0);
+            
             const touchEndX = ref(0);
 
             const touchStart = (e) => {
@@ -1167,6 +1168,52 @@ const handleSync = async (direction) => {
                 }
             };
 
+            // === ⬇️ 全局左右滑动切换日期 (防误触增强版) ⬇️ ===
+            const pageTouchStartX = ref(null); // 改用 null 初始化，方便判断无效滑动
+            const pageTouchStartY = ref(0);
+
+            const handlePageTouchStart = (e) => {
+                if (e.touches.length > 1) return; // 忽略多指缩放操作
+                
+                // 🌟 修复 1：防 iOS 边缘侧滑返回冲突 (屏幕边缘 30px 内的滑动不处理)
+                if (e.touches[0].clientX < 30) {
+                    pageTouchStartX.value = null; 
+                    return;
+                }
+
+                pageTouchStartX.value = e.touches[0].clientX;
+                pageTouchStartY.value = e.touches[0].clientY;
+            };
+
+            const handlePageTouchEnd = (e) => {
+                // 如果是无效起始点，或者没有手指，直接退出
+                if (e.changedTouches.length === 0 || pageTouchStartX.value === null) return;
+                
+                // 防止和横向滚动区域冲突
+                if (e.target.closest('.overflow-x-auto')) return;
+
+                const touchEndX = e.changedTouches[0].clientX;
+                const touchEndY = e.changedTouches[0].clientY;
+
+                const deltaX = touchEndX - pageTouchStartX.value;
+                const deltaY = touchEndY - pageTouchStartY.value;
+
+                // 🌟 修复 2：增加斜滑防误触 (绝对距离达标，且 X轴位移 必须大于 Y轴位移的 1.5倍)
+                if (Math.abs(deltaX) > 50 && Math.abs(deltaY) < 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+                    const newDate = new Date(selectedDate.value);
+                    if (deltaX < 0) {
+                        newDate.setDate(newDate.getDate() + 1); // 左滑：明天
+                    } else {
+                        newDate.setDate(newDate.getDate() - 1); // 右滑：昨天
+                    }
+                    selectedDate.value = newDate;
+                    if (navigator.vibrate) navigator.vibrate(20);
+                }
+
+                // 结束时重置坐标
+                pageTouchStartX.value = null;
+            };
+            // === ⬆️ 结束 ⬆️ ===
 
             const jumpToToday = () => { 
                 const t = new Date(); 
@@ -2083,7 +2130,7 @@ const handleSync = async (direction) => {
         displayUpcomingList, homeUpcomingList, upcomingList, expiredList, upcomingScroll, pauseUpcoming, resumeUpcoming,
         quadrantTitles, progressStats, progressTasks, 
         currentYear, currentMonth, lunarMonthStr, daysInMonth, firstDayOfWeek,
-        selectedDate, changeMonth, jumpToToday, selectDate, getDayClass, isSameDate, getLunarClass,
+        selectedDate, changeMonth, handlePageTouchStart, handlePageTouchEnd, jumpToToday, selectDate, getDayClass, isSameDate, getLunarClass,
         defaultDuration, timeLeft, formatTime, startTimer, stopTimer,
         dailyDoneCount, addTask, isTaskDone, toggleTask, deleteTask, addQuickTask,
         showQuadrantModal, quadrantForm, closeQuadrantModal, saveQuadrantTask,
