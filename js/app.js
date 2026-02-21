@@ -741,13 +741,14 @@ const handleSync = async (direction) => {
 
                     // 3. 只有当移动距离超过 10px 时，才判定为“滚动”
                     // 这样可以忽略手指点击时的微小震颤
-                    if (moveX > 10 || moveY > 10) {
+                    if (moveX > 15 || moveY > 15) {
                         isScrolling = true;
                     }
-                } else {
-                    // 如果没有事件对象（比如 mouseleave），为了安全起见视为滚动
-                    isScrolling = true;
-                }
+                } 
+                // else {
+                //     // 如果没有事件对象（比如 mouseleave），为了安全起见视为滚动
+                //     isScrolling = true;
+                // }
             };
 
             // 1. 触摸结束只负责清理定时器，不处理业务逻辑
@@ -763,17 +764,17 @@ const handleSync = async (direction) => {
 
                 const now = Date.now();
                 
-                // 1. 判断是否双击 (间隔 < 300ms)
-                if (lastTap.value.id === task.id && (now - lastTap.value.time) < 180) {
+                // 1. 判断是否双击 (间隔 < 300ms) 改回 300
+                if (lastTap.value.id === task.id && (now - lastTap.value.time) < 300) {
                     // --- 双击逻辑：修改工时 ---
                     clearTimeout(taskClickTimer); // 马上取消刚才那个准备执行的单击动作
-                    editTaskProgress(task);       // 唤起修改工时弹窗 (和你进度页用的是同一个函数)
+                    editTaskProgress(task);       // 唤起修改工时弹窗
                     lastTap.value = { id: null, time: 0 }; // 重置状态
                 } else {
                     // --- 单击逻辑：手风琴展开/收起 ---
                     lastTap.value = { id: task.id, time: now };
                     
-                    // 延迟 300ms 执行展开，给双击留出反应时间
+                    // 延迟 300ms 执行展开，给双击留出反应时间 (改回 300)
                     taskClickTimer = setTimeout(() => {
                         // 原有的手风琴逻辑
                         if (!task.expanded) {
@@ -782,7 +783,7 @@ const handleSync = async (direction) => {
                             });
                         }
                         task.expanded = !task.expanded;
-                    }, 180);
+                    }, 300);
                 }
             };
 
