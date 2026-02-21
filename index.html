@@ -1492,6 +1492,42 @@
         </div>
     </div>
 
+   <div v-if="showProgressModal" class="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in px-4" @click.self="showProgressModal = false">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-[16rem] rounded-2xl overflow-hidden shadow-2xl animate-scale-up border dark:border-gray-700 transition-all">
+            
+            <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800">
+                <span class="font-bold text-sm text-gray-800 dark:text-gray-100">调整工时</span>
+                <button @click="showProgressModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">×</button>
+            </div>
+            
+            <div class="p-5 text-center">
+                <div class="mb-4">
+                <div class="text-xs text-gray-500 dark:text-gray-400 truncate px-2 mb-1">
+                    任务: <span class="font-bold text-gray-700 dark:text-gray-300">{{ progressForm.taskText }}</span>
+                </div>
+                <div class="text-[10px] text-gray-400 bg-gray-100 dark:bg-gray-700/50 py-1 rounded-lg inline-block px-3">
+                    当前累计: <span class="font-mono font-bold text-blue-500">{{ (tasks.find(t=>t.id===progressForm.taskId)?.accumulated || 0).toFixed(1) }}h</span>
+                </div>
+            </div>
+
+                <div class="flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-xl px-4 py-3 mx-4 mb-4 border border-transparent focus-within:border-blue-500 focus-within:bg-white dark:focus-within:bg-gray-800 transition-all">
+                    <input ref="progressInputRef" 
+                           v-model="progressForm.hours" 
+                           type="number" 
+                           step="1" 
+                           placeholder="新增分钟" 
+                           class="w-24 bg-transparent text-2xl font-bold text-blue-600 dark:text-blue-400 outline-none text-center placeholder-gray-300 dark:placeholder-gray-600"
+                           @keyup.enter="saveTaskProgress">
+                    <span class="text-sm text-gray-400 font-bold ml-1 pt-1">min</span>
+                </div>
+
+                <button @click="saveTaskProgress" class="w-full bg-blue-600 text-white py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-blue-500/30 active:scale-95 transition-transform">
+                    确认
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div v-if="showQuadrantModal" class="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in px-4" @click.self="closeQuadrantModal">
         <div class="bg-gray-100 dark:bg-gray-800 w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl animate-scale-up border dark:border-gray-700 transition-all">
             <div class="bg-white dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
