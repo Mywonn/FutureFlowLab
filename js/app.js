@@ -2099,15 +2099,32 @@ const handleSync = async (direction) => {
         };
 
     // --- 🚀 新增：底部四象限面板折叠逻辑 ---
-            const isBottomPanelExpanded = ref(true); // 默认展开
+            const isBottomPanelExpanded = ref(true); // 默认状态
 
-            // 简单的切换函数
+            // 1. 计算专注页当前显示的任务总数
+            const totalNowTasksCount = computed(() => {
+                return activeRecurringQuadrantTasks.value.length + activeInboxTasks.value.length;
+            });
+
+            // 2. 监听任务总数变化，进行自动折叠/展开
+            watch(totalNowTasksCount, (newCount, oldCount) => {
+                // 当数量增长到 6 条（大于 5）时 -> 自动隐藏
+                if (newCount > 5 && (oldCount === undefined || oldCount <= 5)) {
+                    isBottomPanelExpanded.value = false;
+                } 
+                // 当数量减少到 5 条及以下时 -> 自动展开
+                else if (newCount <= 5 && oldCount > 5) {
+                    isBottomPanelExpanded.value = true;
+                }
+            }, { immediate: true });
+
+            // 简单的切换函数 (保留原有手动控制)
             const toggleBottomPanel = () => {
                 isBottomPanelExpanded.value = !isBottomPanelExpanded.value;
                 if(navigator.vibrate) navigator.vibrate(10); // 微震动反馈
             };
 
-            // 处理把手的滑动手势 (简单的 Y 轴判断)
+            // 处理把手的滑动手势 (保留原有手势控制)
             let panelTouchStartY = 0;
             const handlePanelTouchStart = (e) => {
                 panelTouchStartY = e.touches[0].clientY;
@@ -2123,7 +2140,7 @@ const handleSync = async (direction) => {
                     // 向上滑 -> 展开
                     isBottomPanelExpanded.value = true;
                 }
-            }; 
+            };
         
             // === 🌟 年度愿景板逻辑 ===
             const showYearlyGoals = ref(false);
