@@ -2099,46 +2099,61 @@ const handleSync = async (direction) => {
         };
 
     // --- 🚀 新增：底部四象限面板折叠逻辑 ---
-            const isBottomPanelExpanded = ref(true); // 默认状态
+            const isBottomPanelExpanded = ref(true); // 默认展开
+            const autoCollapsed = ref(false); // 🌟 新增：记录是否是系统自动折叠的
 
             // 1. 计算专注页当前显示的任务总数
             const totalNowTasksCount = computed(() => {
                 return activeRecurringQuadrantTasks.value.length + activeInboxTasks.value.length;
             });
 
-            // 2. 监听任务总数变化，进行自动折叠/展开
+            // 2. 监听任务总数变化（智能优先级判断）
             watch(totalNowTasksCount, (newCount, oldCount) => {
-                // 当数量增长到 6 条（大于 5）时 -> 自动隐藏
-                if (newCount > 5 && (oldCount === undefined || oldCount <= 5)) {
-                    isBottomPanelExpanded.value = false;
+                const old = oldCount || 0;
+                
+                // 【情况A：任务突破 6 条】
+                if (newCount > 5 && old <= 5) {
+                    // 如果面板当前是展开的，系统就帮它收起，并打上“系统代劳”的标记
+                    if (isBottomPanelExpanded.value) {
+                        isBottomPanelExpanded.value = false;
+                        autoCollapsed.value = true; 
+                    }
                 } 
-                // 当数量减少到 5 条及以下时 -> 自动展开
-                else if (newCount <= 5 && oldCount > 5) {
-                    isBottomPanelExpanded.value = true;
+                // 【情况B：任务回落到 6 条及以下】
+                else if (newCount <= 5 && old > 5) {
+                    // 🌟 核心判断：只有当面板是“被系统自动收起”的，系统才负责把它展开
+                    // 如果是你手动收起的 (autoCollapsed 为 false)，系统绝对不干预！
+                    if (autoCollapsed.value && !isBottomPanelExpanded.value) {
+                        isBottomPanelExpanded.value = true;
+                        autoCollapsed.value = false; // 任务完成，重置标记
+                    }
                 }
             }, { immediate: true });
 
-            // 简单的切换函数 (保留原有手动控制)
+            // 3. 简单的切换函数（手动控制）
             const toggleBottomPanel = () => {
                 isBottomPanelExpanded.value = !isBottomPanelExpanded.value;
-                if(navigator.vibrate) navigator.vibrate(10); // 微震动反馈
+                autoCollapsed.value = false; // 🌟 只要手动干预，立刻清除系统标记
+                if(navigator.vibrate) navigator.vibrate(10);
             };
 
-            // 处理把手的滑动手势 (保留原有手势控制)
+            // 4. 处理把手的滑动手势（手动控制）
             let panelTouchStartY = 0;
             const handlePanelTouchStart = (e) => {
                 panelTouchStartY = e.touches[0].clientY;
             };
             const handlePanelTouchEnd = (e) => {
                 const deltaY = e.changedTouches[0].clientY - panelTouchStartY;
-                const threshold = 30; // 滑动阈值
+                const threshold = 30;
 
                 if (deltaY > threshold && isBottomPanelExpanded.value) {
                     // 向下滑 -> 收起
                     isBottomPanelExpanded.value = false;
+                    autoCollapsed.value = false; // 🌟 手动干预，清除系统标记
                 } else if (deltaY < -threshold && !isBottomPanelExpanded.value) {
                     // 向上滑 -> 展开
                     isBottomPanelExpanded.value = true;
+                    autoCollapsed.value = false; // 🌟 手动干预，清除系统标记
                 }
             };
         
