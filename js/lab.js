@@ -124,13 +124,27 @@ export function useLab() {
     // 恢复历史
     const restoreHistory = (record) => {
         web3Project.value.name = record.projectName;
-        // 恢复方案数据
+        
         if (record.result.options) {
             web3Project.value.plans = record.result.options;
-            isStrategyMode.value = true; // 历史记录通常是战略
+            // 兼容可能存在的 labMode 或 isStrategyMode
+            if (typeof labMode !== 'undefined') labMode.value = 'strategy';
+            else if (typeof isStrategyMode !== 'undefined') isStrategyMode.value = true;
         } else {
-            // 兼容旧历史
-            web3Project.value.plans = [record.result];
+            // 🐛 核心修复 1：将历史记录的原始 JSON 重新组装成 UI 需要的标准格式
+            web3Project.value.plans = [{
+                type: record.result.systemName ? '💡 灵感萃取' : '⚡ 极速行动',
+                systemName: record.result.systemName || '历史萃取记录',
+                analysis: record.result.stretchGoal,
+                // 兼容新老字段命名
+                setupAction: record.result.setupAction || record.result.atomicStart,
+                milestones: record.result.milestones || record.result.steps || []
+            }];
+            
+            // 自动推断恢复的模式
+            if (typeof labMode !== 'undefined') {
+                labMode.value = record.result.systemName ? 'extract' : 'flash';
+            }
         }
         web3Project.value.selectedPlanIndex = 0;
     };
