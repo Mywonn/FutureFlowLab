@@ -506,25 +506,25 @@
             <div class="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-indigo-50 dark:border-indigo-900/20 animate-fade-in">
                 <div v-if="identities.length > 0" class="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-indigo-50 dark:border-indigo-900/20 animate-fade-in">
                 
-                <div class="flex flex-col space-y-3 mb-4">
-                    <h3 class="text-indigo-600 font-black text-sm uppercase tracking-tighter">
+                <div class="mb-4 flex flex-col space-y-3 w-full">
+                    <h3 class="text-indigo-600 dark:text-indigo-400 font-black text-sm uppercase tracking-tighter">
                         {{ labMode === 'strategy' ? '♟️ 战略指挥部' : (labMode === 'extract' ? '📥 聊天萃取器' : '⚡ 闪电行动室') }}
                     </h3>
                     
-                    <div class="bg-gray-100 dark:bg-gray-700 p-1 rounded-lg flex text-[10px] font-bold w-full">
+                    <div class="bg-gray-100 dark:bg-gray-900/60 p-1 rounded-lg flex text-[10px] font-bold w-full">
                         <button @click="labMode = 'flash'" 
-                                class="flex-1 py-2 flex justify-center items-center rounded-md transition-all"
-                                :class="labMode === 'flash' ? 'bg-white dark:bg-gray-600 text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'">
+                                class="flex-1 py-1.5 flex justify-center items-center rounded-md transition-all"
+                                :class="labMode === 'flash' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-gray-400 dark:text-gray-500 active:bg-gray-200 dark:active:bg-gray-800'">
                             ⚡ Flash
                         </button>
                         <button @click="labMode = 'strategy'" 
-                                class="flex-1 py-2 flex justify-center items-center rounded-md transition-all"
-                                :class="labMode === 'strategy' ? 'bg-white dark:bg-gray-600 text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'">
+                                class="flex-1 py-1.5 flex justify-center items-center rounded-md transition-all"
+                                :class="labMode === 'strategy' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-gray-400 dark:text-gray-500 active:bg-gray-200 dark:active:bg-gray-800'">
                             ♟️ Strategy
                         </button>
                         <button @click="labMode = 'extract'" 
-                                class="flex-1 py-2 flex justify-center items-center rounded-md transition-all"
-                                :class="labMode === 'extract' ? 'bg-white dark:bg-gray-600 text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'">
+                                class="flex-1 py-1.5 flex justify-center items-center rounded-md transition-all"
+                                :class="labMode === 'extract' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-gray-400 dark:text-gray-500 active:bg-gray-200 dark:active:bg-gray-800'">
                             📥 Extract
                         </button>
                     </div>
@@ -535,15 +535,15 @@
                         <label class="text-[10px] text-gray-400 font-bold uppercase">正在探索的项目</label>
                         <div class="flex items-start space-x-2 border-b border-gray-100 dark:border-gray-700 py-1">
                             <textarea v-model="web3Project.name" 
-                                rows="1"
-                                :placeholder="labMode === 'extract' ? '在此粘贴落地长文建议...' : '例如: 行动指令越详细越好...'" 
-                                oninput="autoResize(this)"
-                                class="flex-1 bg-transparent py-1 outline-none text-lg font-bold resize-none overflow-hidden placeholder-gray-300 dark:placeholder-gray-600 h-auto"
-                                style="min-height: 2rem;">
-                            </textarea>
+                                        rows="1"
+                                        :placeholder="labMode === 'extract' ? '在此粘贴你要落地的聊天记录或长文建议...' : '例如: 行动指令越详细越好...'" 
+                                        oninput="autoResize(this)"
+                                        class="flex-1 bg-transparent py-1 outline-none text-lg font-bold resize-none overflow-y-auto no-scrollbar placeholder-gray-300 dark:placeholder-gray-600 transition-all duration-300"
+                                        style="min-height: 2.5rem; max-height: 12rem;"></textarea>
+                            
                             <button @click="runAiAnalysis" 
                                     :disabled="isAnalyzing"
-                                    class="shrink-0 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-3 py-1.5 rounded-xl text-xs font-black active:scale-95 transition">
+                                    class="shrink-0 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-3 py-2 rounded-xl text-xs font-black active:scale-95 transition mt-0.5">
                                 {{ isAnalyzing ? '解析中...' : '🪄 AI 解析' }}
                             </button>
                         </div>
@@ -561,8 +561,8 @@
                             rows="3"
                             placeholder="AI 将为你拆解清晰目标..." 
                             oninput="autoResize(this)"
-                            class="w-full bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 mt-1 text-sm outline-none resize-none overflow-y-auto leading-relaxed text-gray-700 dark:text-gray-200 transition-all focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900/30 duration-300"
-                            style="min-height: 5rem;"></textarea>
+                            class="w-full bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 mt-1 text-sm outline-none resize-none overflow-y-auto no-scrollbar leading-relaxed text-gray-700 dark:text-gray-200 transition-all focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900/30 duration-300"
+                            style="min-height: 5rem; max-height: 16rem;"></textarea>
                     </div>
 
                     <div class="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-800/30 transition-all duration-300">
@@ -579,8 +579,8 @@
                                 rows="1" 
                                 placeholder="极简启动动作..." 
                                 oninput="autoResize(this)"
-                                class="bg-transparent w-full text-sm font-bold text-indigo-700 dark:text-indigo-300 outline-none resize-none overflow-y-auto h-auto"
-                                style="min-height: 1.5rem;"></textarea>
+                                class="bg-transparent w-full text-sm font-bold text-indigo-700 dark:text-indigo-300 outline-none resize-none overflow-y-auto no-scrollbar transition-all duration-300"
+                                style="min-height: 1.5rem; max-height: 8rem;"></textarea>
                         </div>
                     </div>
                 </div>
@@ -606,8 +606,11 @@
                 <div class="flex overflow-x-auto no-scrollbar space-x-4 pb-4 snap-x snap-mandatory px-1">
                     <div v-for="(plan, index) in web3Project.plans" :key="index"
                             @click="web3Project.selectedPlanIndex = index"
-                            class="shrink-0 w-[85%] snap-center rounded-3xl p-5 border-2 transition-all duration-300 relative overflow-hidden bg-white dark:bg-gray-800 shadow-sm cursor-pointer group"
-                            :class="web3Project.selectedPlanIndex === index ? 'border-indigo-500 ring-4 ring-indigo-500/10 scale-[1.02] shadow-md z-10' : 'border-transparent opacity-60 scale-95 grayscale-[0.5]'">
+                            class="shrink-0 snap-center rounded-3xl p-5 border-2 transition-all duration-300 relative overflow-hidden bg-white dark:bg-gray-800 shadow-sm cursor-pointer group"
+                            :class="[
+                                web3Project.plans.length === 1 ? 'w-full' : 'w-[85%]',
+                                web3Project.selectedPlanIndex === index ? 'border-indigo-500 ring-4 ring-indigo-500/10 scale-[1.02] shadow-md z-10' : 'border-transparent opacity-60 scale-95 grayscale-[0.5]'
+                            ]">
                         
                         <div v-if="web3Project.selectedPlanIndex === index" class="absolute top-0 right-0 bg-indigo-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl shadow-sm">
                             SELECTED
@@ -1663,12 +1666,25 @@
                         暂无历史记录
                     </div>
 
-                    <div v-for="h in labHistory" :key="h.id" class="mb-4 bg-gray-50 dark:bg-gray-800 p-4 rounded-2xl relative border border-gray-100 dark:border-gray-700 shadow-sm">
-                        <button @click="deleteHistory(h.id)" class="absolute top-2 right-2 text-gray-300 hover:text-red-500">×</button>
-                        <div class="text-[10px] text-gray-400 mb-1">{{ h.date }}</div>
-                        <div class="font-bold text-indigo-600 mb-2">{{ h.projectName }}</div>
-                        <button @click="restoreHistory(h); showHistoryModal=false" class="mt-2 w-full bg-white dark:bg-gray-700 text-xs font-bold py-2 rounded-lg border border-gray-200 dark:border-gray-600 active:scale-95 transition">
-                            再次唤醒
+                    <div v-for="h in labHistory" :key="h.id" class="mb-4 bg-gray-50 dark:bg-gray-800 p-4 rounded-2xl relative border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col">
+                        
+                        <button @click="deleteHistory(h.id)" class="absolute top-3 right-3 text-gray-400 hover:text-red-500 w-6 h-6 flex items-center justify-center rounded-full bg-white dark:bg-gray-700 shadow-sm">×</button>
+                        
+                        <div class="text-[10px] text-gray-400 mb-2 pr-6">{{ h.date }}</div>
+                        
+                        <div class="text-sm text-gray-700 dark:text-gray-300 mb-1 whitespace-pre-wrap leading-relaxed transition-all duration-300"
+                             :class="h.expanded ? '' : 'line-clamp-4'">
+                            {{ h.projectName }}
+                        </div>
+                        
+                        <button v-if="h.projectName && h.projectName.length > 50"
+                                @click="h.expanded = !h.expanded"
+                                class="text-left text-[11px] text-indigo-500 dark:text-indigo-400 font-bold mb-3 hover:opacity-80 transition-opacity py-1">
+                            {{ h.expanded ? '收起内容 ▲' : '展开阅读全部 ▼' }}
+                        </button>
+                        <div v-else class="mb-3"></div> <button @click="restoreHistory(h); showHistoryModal=false" 
+                                class="mt-auto w-full bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 text-xs font-bold py-2.5 rounded-xl border border-indigo-100 dark:border-gray-600 shadow-sm active:scale-95 transition flex items-center justify-center">
+                            <span class="mr-1">✨</span> 再次唤醒
                         </button>
                     </div>
                 </div>
