@@ -56,12 +56,24 @@ export const STRATEGY_PROMPT = `
 *注意：frequency 只能是 'day'|'week'|'month'。duration 是小时数。*
 `;
 
+// 3. 📥 萃取模式 (DeepSeek 专用长文本提炼)
+export const EXTRACT_PROMPT = `
+你是一个行动转化引擎。用户会输入一段杂乱的聊天记录或长篇大论的建议。
+你的任务是：从中提取出最核心的行动步骤，并转化为 FutureFlow 的任务格式。
+请严格按以下 JSON 格式输出：
+{
+  "stretchGoal": "一句话总结这段聊天的核心意图",
+  "atomicStart": "马上能做的第一步破冰动作 (极简)",
+  "steps": ["核心动作1", "核心动作2", "核心动作3"]
+}
+`;
+
 export function useLab() {
     const identities = ref(JSON.parse(localStorage.getItem('ff_custom_identities')) || []);
     const activeIdentity = ref(identities.value[0] || null);
     
-    // 👇 新增状态：是否为战略模式 (默认 false = 闪电模式)
-    const isStrategyMode = ref(false);
+    // 👇 状态升级：'flash' | 'strategy' | 'extract'
+    const labMode = ref('flash');
 
     const saveIdentities = () => {
         localStorage.setItem('ff_custom_identities', JSON.stringify(identities.value));
@@ -117,8 +129,8 @@ export function useLab() {
 
     return {
         identities, activeIdentity, web3Project, saveIdentities,
-        isStrategyMode, FLASH_PROMPT, STRATEGY_PROMPT,
-        labHistory, addToHistory, deleteHistory, restoreHistory, // 导出新功能
+        labMode, FLASH_PROMPT, STRATEGY_PROMPT, EXTRACT_PROMPT,
+        labHistory, addToHistory, deleteHistory, restoreHistory,
     };
 
 
