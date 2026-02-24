@@ -1971,124 +1971,124 @@ const handleSync = async (direction) => {
 
  
     const startEvolution = () => {
-        
         const plan = web3Project.value.currentPlan; 
-    if (!plan) return;
+        if (!plan) return;
 
-    const todayStr = new Date().toISOString().split('T')[0];
-    
-    // 提取子任务
-    const subtasks = (plan.milestones || []).map(s => ({ 
-        id: Date.now() + Math.random(), text: s, done: false 
-    }));
+        // 🐛 核心修复 2：获取精确的本地时间戳，解决 UTC 时差导致的丢失问题
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dayStr = String(d.getDate()).padStart(2, '0');
+        const todayStr = `${y}-${m}-${dayStr}`; 
+        const dateKey = formatDateKey(d); // 兼容旧版日期的判断逻辑
+        
+        // 兼容提取出的各项字段
+        const milestones = plan.milestones || plan.steps || [];
+        const subtasks = milestones.map(s => ({ 
+            id: Date.now() + Math.random(), text: s, done: false 
+        }));
 
-    if (isStrategyMode.value) {
-        // 部署启动任务
-        if (plan.setupAction) {
+        // 动态判断当前是不是战略模式
+        const isStrategy = plan.weeklySchedule || (plan.options && plan.options.length > 0) || (typeof labMode !== 'undefined' && labMode.value === 'strategy') || (typeof isStrategyMode !== 'undefined' && isStrategyMode.value === true);
+
+        if (isStrategy) {
+            // --- ♟️ 战略模式：部署系统 ---
+            if (plan.setupAction || plan.atomicStart) {
+                tasks.value.unshift({
+                    id: Date.now(),
+                    text: `🚀 [启动] ${plan.setupAction || plan.atomicStart}`,
+                    q: 2, 
+                    done: false,
+                    date: dateKey, // 👈 补全 date 字段
+                    duration: 0.5,
+                    startDate: todayStr,
+                    endDate: todayStr,
+                    repeat: 'none',
+                    subtasks: []
+                });
+            }
+            
+            if (plan.weeklySchedule && plan.weeklySchedule.length > 0) {
+                plan.weeklySchedule.forEach((dayPlan, index) => {
+                    const targetDate = new Date();
+                    targetDate.setDate(targetDate.getDate() + index); 
+                    
+                    const ty = targetDate.getFullYear();
+                    const tm = String(targetDate.getMonth() + 1).padStart(2, '0');
+                    const td = String(targetDate.getDate()).padStart(2, '0');
+                    const dateStr = `${ty}-${tm}-${td}`;
+
+                    const dailySubtasks = (dayPlan.tasks || []).map(t => ({
+                        id: Date.now() + Math.random(), text: t, done: false
+                    }));
+
+                    setTimeout(() => {
+                        tasks.value.push({
+                            id: Date.now() + Math.random(),
+                            text: `[周${"日一二三四五六".charAt(targetDate.getDay())}] ${dayPlan.theme} (${plan.systemName})`,
+                            q: 2, 
+                            done: false,
+                            date: formatDateKey(targetDate), // 👈 补全 date 字段
+                            duration: plan.duration || 0.5,
+                            startDate: dateStr, 
+                            endDate: '',        
+                            repeat: 'week',     
+                            repeatInterval: 1,  
+                            expanded: false,
+                            subtasks: dailySubtasks
+                        });
+                    }, index * 50);
+                });
+                alert(`已为你生成未来 ${plan.weeklySchedule.length} 天的定制计划！请去四象限查看。`);
+
+            } else if (plan.systemName) {
+                setTimeout(() => {
+                     tasks.value.push({
+                        id: Date.now() + 1,
+                        text: plan.routine || plan.systemName, 
+                        q: 2,
+                        done: false,
+                        date: dateKey, // 👈 补全 date 字段
+                        duration: plan.duration || 0.5,
+                        startDate: todayStr,
+                        endDate: '',
+                        repeat: plan.frequency || 'day',
+                        repeatInterval: 1,
+                        expanded: true,
+                        subtasks: subtasks 
+                    });
+                }, 10);
+            }
+        } else {
+            // --- ⚡ 闪电模式 & 📥 萃取模式：单点突破 ---
+            // 自动判断是萃取还是闪电
+            const isExtract = plan.type === '💡 灵感萃取' || !!plan.systemName;
+            
+            // 优先拿具体动作，没有就用系统名，最后才是项目名
+            const mainText = plan.setupAction || plan.atomicStart || plan.systemName || web3Project.value.name;
+
             tasks.value.unshift({
                 id: Date.now(),
-                text: `🚀 [启动] ${plan.setupAction}`,
-                q: 2,  // ✅ 改为 Q2 (重要不紧急)
+                text: isExtract ? `💡 ${mainText}` : `⚡ ${mainText}`,
+                q: isExtract ? 0 : 1, // 💡 萃取放入 Inbox(Q0)，⚡ 闪电放入 Q1
                 done: false,
+                date: dateKey, // 🐛 核心修复 3：补全 date 字段，不再离奇失踪
                 duration: 0.5,
                 startDate: todayStr,
                 endDate: todayStr,
                 repeat: 'none',
-                subtasks: []
+                accumulated: 0,
+                log: [],
+                expanded: true,
+                subtasks: subtasks
             });
         }
-        
-        // 部署系统任务
-        if (plan.weeklySchedule && plan.weeklySchedule.length > 0) {
-            // 💥 核心升级：如果是7天周期计划，则生成7个具体的、不同的任务
-            plan.weeklySchedule.forEach((dayPlan, index) => {
-                const targetDate = new Date();
-                targetDate.setDate(targetDate.getDate() + index); // 今天+0, 今天+1...
-                
-                // 格式化日期为 YYYY-MM-DD
-                const y = targetDate.getFullYear();
-                const m = String(targetDate.getMonth() + 1).padStart(2, '0');
-                const d = String(targetDate.getDate()).padStart(2, '0');
-                const dateStr = `${y}-${m}-${d}`;
 
-                // 将该天的 tasks (数组) 转为子任务结构
-                const dailySubtasks = (dayPlan.tasks || []).map(t => ({
-                    id: Date.now() + Math.random(),
-                    text: t, // 例如 "早餐吃鸡蛋", "运动做深蹲"
-                    done: false
-                }));
-
-                setTimeout(() => {
-                    tasks.value.push({
-                        id: Date.now() + Math.random(),
-                        // 任务名：[周一] 核心激活 (系统名)
-                        // 我们把 D1, D2 映射为具体的星期几，体验更好
-                        text: `[周${"日一二三四五六".charAt(targetDate.getDay())}] ${dayPlan.theme} (${plan.systemName})`,
-                        q: 2, 
-                        done: false,
-                        date: formatDateKey(targetDate), // 初始显示在这一天
-                        duration: plan.duration || 0.5,
-                        
-                        startDate: dateStr, // 从这一天开始生效
-                        endDate: '',        // ✅ 修改1：留空！代表“永久有效”，不会过期
-                        
-                        repeat: 'week',     // ✅ 修改2：开启“每周重复”
-                        repeatInterval: 1,  // 每1周重复一次
-                        
-                        expanded: false,
-                        subtasks: dailySubtasks
-                    });
-                }, index * 50);
-            });
-            
-            alert(`已为你生成未来 ${plan.weeklySchedule.length} 天的定制计划！请去四象限查看。`);
-
-        } else if (plan.systemName) {
-            // ... (这里保留原来的旧逻辑，作为没有 weeklySchedule 时的兜底) ...
-            setTimeout(() => {
-                 tasks.value.push({
-                    id: Date.now() + 1,
-                    text: plan.routine || plan.systemName, 
-                    q: 2,
-                    done: false,
-                    duration: plan.duration || 0.5,
-                    startDate: todayStr,
-                    endDate: '',
-                    repeat: plan.frequency || 'day',
-                    repeatInterval: 1,
-                    expanded: true,
-                    subtasks: subtasks 
-                });
-            }, 10);
-        }
-    } else {
-    // === ⚡ 闪电模式 & 萃取模式：单点突破 ===
-    tasks.value.unshift({
-            id: Date.now(),
-            // 萃取出来的用💡图标，闪电用⚡
-            text: labMode.value === 'extract' ? `💡 ${web3Project.value.atomicStart}` : `⚡ ${web3Project.value.atomicStart || web3Project.value.name}`,
-            // 💡 萃取的任务放入 Inbox(Q0) 让你自己安排，闪电任务直接进 Q1
-            q: labMode.value === 'extract' ? 0 : 1, 
-            done: false,
-            duration: 0.5,
-            startDate: todayStr,
-            endDate: todayStr,
-            repeat: 'none',
-            accumulated: 0,
-            log: [],
-            expanded: true,
-            subtasks: subtasks
-        });
-    }
-
-        // 部署完成后，跳转回“今日专注”页查看成果
         currentTab.value = 'now'; 
-        
-        // 清空输入，方便下次
         web3Project.value.name = '';
         web3Project.value.stretchGoal = '';
         web3Project.value.atomicStart = '';
-        web3Project.value.suggestedSteps = [];
+        web3Project.value.plans = []; 
     };
 
     const handleProgressScroll = (e) => {
