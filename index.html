@@ -426,18 +426,23 @@
     <div class="flex-1 overflow-hidden relative bg-white dark:bg-gray-900 flex flex-col">
         <div v-if="currentTab === 'lab'" class="h-full p-6 space-y-6 bg-slate-50 dark:bg-gray-950 overflow-y-auto pb-20">
             
-            <div class="flex justify-between items-center mb-4">
-                <div>
-                    <h2 class="text-xl font-bold text-indigo-600 dark:text-indigo-400 leading-none">觉醒实验室</h2>
-                    <p class="text-[10px] text-gray-400 uppercase tracking-widest mt-1">Awakening Lab</p>
+            <div class="flex justify-between items-center mb-6 mt-1">
+                <div class="flex flex-col justify-center">
+                    <h2 class="text-2xl font-black text-indigo-600 dark:text-indigo-400 leading-none tracking-tight">觉醒实验室</h2>
+                    <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1.5">Awakening Lab</p>
                 </div>
                 
-                <div class="flex space-x-2">
-                    <button @click="showHistoryModal = true" class="p-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 active:scale-95 transition">
-                        <span class="text-sm">📜</span>
+                <div class="flex items-center bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-1">
+                    <button @click="showHistoryModal = true" 
+                            class="w-10 h-9 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl active:scale-95 transition-all">
+                        <span class="text-base opacity-80 hover:opacity-100">📜</span>
                     </button>
-                    <button @click="showAiConfigModal = true" class="p-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 active:scale-95 transition">
-                        <span class="text-sm">⚙️</span>
+                    
+                    <div class="w-px h-4 bg-gray-100 dark:bg-gray-700 mx-0.5"></div>
+                    
+                    <button @click="showAiConfigModal = true" 
+                            class="w-10 h-9 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl active:scale-95 transition-all">
+                        <span class="text-base opacity-80 hover:opacity-100">⚙️</span>
                     </button>
                 </div>
             </div>
@@ -501,21 +506,26 @@
             <div class="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-indigo-50 dark:border-indigo-900/20 animate-fade-in">
                 <div v-if="identities.length > 0" class="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-indigo-50 dark:border-indigo-900/20 animate-fade-in">
                 
-                <div class="flex justify-between items-center mb-4">
+                <div class="flex flex-col space-y-3 mb-4">
                     <h3 class="text-indigo-600 font-black text-sm uppercase tracking-tighter">
-                        {{ isStrategyMode ? '♟️ 战略指挥部' : '⚡ 闪电行动室' }}
+                        {{ labMode === 'strategy' ? '♟️ 战略指挥部' : (labMode === 'extract' ? '📥 聊天萃取器' : '⚡ 闪电行动室') }}
                     </h3>
                     
-                    <div class="bg-gray-100 dark:bg-gray-700 p-1 rounded-lg flex text-[10px] font-bold">
-                        <button @click="isStrategyMode = false" 
-                                class="px-3 py-1.5 rounded-md transition-all"
-                                :class="!isStrategyMode ? 'bg-white dark:bg-gray-600 text-indigo-600 shadow-sm' : 'text-gray-400'">
-                            Flash
+                    <div class="bg-gray-100 dark:bg-gray-700 p-1 rounded-lg flex text-[10px] font-bold w-full">
+                        <button @click="labMode = 'flash'" 
+                                class="flex-1 py-2 flex justify-center items-center rounded-md transition-all"
+                                :class="labMode === 'flash' ? 'bg-white dark:bg-gray-600 text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'">
+                            ⚡ Flash
                         </button>
-                        <button @click="isStrategyMode = true" 
-                                class="px-3 py-1.5 rounded-md transition-all"
-                                :class="isStrategyMode ? 'bg-white dark:bg-gray-600 text-indigo-600 shadow-sm' : 'text-gray-400'">
-                            Strategy
+                        <button @click="labMode = 'strategy'" 
+                                class="flex-1 py-2 flex justify-center items-center rounded-md transition-all"
+                                :class="labMode === 'strategy' ? 'bg-white dark:bg-gray-600 text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'">
+                            ♟️ Strategy
+                        </button>
+                        <button @click="labMode = 'extract'" 
+                                class="flex-1 py-2 flex justify-center items-center rounded-md transition-all"
+                                :class="labMode === 'extract' ? 'bg-white dark:bg-gray-600 text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'">
+                            📥 Extract
                         </button>
                     </div>
                 </div>
@@ -525,11 +535,12 @@
                         <label class="text-[10px] text-gray-400 font-bold uppercase">正在探索的项目</label>
                         <div class="flex items-start space-x-2 border-b border-gray-100 dark:border-gray-700 py-1">
                             <textarea v-model="web3Project.name" 
-                                        rows="1"
-                                        placeholder="例如: 行动指令越详细越好..." 
-                                        oninput="autoResize(this)"
-                                        class="flex-1 bg-transparent py-1 outline-none text-lg font-bold resize-none overflow-hidden placeholder-gray-300 dark:placeholder-gray-600 h-auto"
-                                        style="min-height: 2rem;"></textarea>
+                                rows="1"
+                                :placeholder="labMode === 'extract' ? '在此粘贴落地长文建议...' : '例如: 行动指令越详细越好...'" 
+                                oninput="autoResize(this)"
+                                class="flex-1 bg-transparent py-1 outline-none text-lg font-bold resize-none overflow-hidden placeholder-gray-300 dark:placeholder-gray-600 h-auto"
+                                style="min-height: 2rem;">
+                            </textarea>
                             <button @click="runAiAnalysis" 
                                     :disabled="isAnalyzing"
                                     class="shrink-0 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-3 py-1.5 rounded-xl text-xs font-black active:scale-95 transition">
@@ -540,7 +551,7 @@
 
                     <div>
                         <label class="text-[10px] font-bold text-gray-400 uppercase mb-2 block">
-                            {{ isStrategyMode ? '♟️ 现状评估 & 战略周期 (Analysis)' : '🎯 具象化目标 (Stretch Goal)' }}
+                            {{ labMode === 'strategy' ? '♟️ 现状评估 & 战略周期 (Analysis)' : (labMode === 'extract' ? '💡 核心意图提炼 (Intent)' : '🎯 具象化目标 (Stretch Goal)') }}
                         </label>
                         <textarea 
                             :value="web3Project.plans.length > 0 
@@ -556,7 +567,7 @@
 
                     <div class="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-800/30 transition-all duration-300">
                         <label class="text-[10px] font-bold text-gray-400 uppercase mb-2 block">
-                            {{ isStrategyMode ? '🚀 今日启动扳机 (Launch Trigger)' : '⚡ 2分钟原子入口 (Atomic Start)' }}
+                            {{ labMode === 'strategy' ? '🚀 今日启动扳机 (Launch Trigger)' : (labMode === 'extract' ? '📥 第一步破冰动作 (First Step)' : '⚡ 2分钟原子入口 (Atomic Start)') }}
                         </label>
                         <div class="flex items-start mt-1">
                             <span class="mr-2 mt-1">⚡</span> 
