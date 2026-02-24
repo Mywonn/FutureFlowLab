@@ -1948,7 +1948,9 @@ const handleSync = async (direction) => {
                     // ⚡ 闪电模式 和 📥 萃取模式：构造成一个单元素数组，方便统一 UI
                     web3Project.value.plans = [{
                         type: labMode.value === 'extract' ? '💡 灵感萃取' : '⚡ 极速行动',
-                        analysis: cleanJson.stretchGoal, // 映射字段
+                        // ✅ 修复：正确映射 systemName，防止 UI 显示“系统名称”这个占位符
+                        systemName: cleanJson.systemName || (labMode.value === 'extract' ? '核心打法提炼' : '单点突破'), 
+                        analysis: cleanJson.stretchGoal,
                         setupAction: cleanJson.atomicStart,
                         milestones: cleanJson.steps || []
                     }];
