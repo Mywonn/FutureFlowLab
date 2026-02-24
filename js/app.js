@@ -12,8 +12,8 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
 
             const { 
                 identities, activeIdentity, web3Project, saveIdentities,
-                isStrategyMode, FLASH_PROMPT, STRATEGY_PROMPT,
-                labHistory, addToHistory, deleteHistory, restoreHistory // 👈 新增
+                labMode, FLASH_PROMPT, STRATEGY_PROMPT, EXTRACT_PROMPT,
+                labHistory, addToHistory, deleteHistory, restoreHistory
             } = useLab();
 
             // --- 3. 夜间模式逻辑 ---
@@ -1890,25 +1890,23 @@ const handleSync = async (direction) => {
 
     const runAiAnalysis = async () => {
         if (!aiConfig.key) { showAiConfigModal.value = true; return; }
-        if (!web3Project.value.name) { alert("请先输入项目名"); return; }
+        if (!web3Project.value.name) { alert("请先输入内容"); return; }
         
         isAnalyzing.value = true;
         const GEMINI_PROXY = 'https://futureflowlab.mzdesx.workers.dev'; 
 
         try {
             // 🚀 核心分支：根据开关选择 Prompt
-            const currentPrompt = isStrategyMode.value ? STRATEGY_PROMPT : FLASH_PROMPT;
+            let currentPrompt = FLASH_PROMPT;
+            if (labMode.value === 'strategy') currentPrompt = STRATEGY_PROMPT;
+            if (labMode.value === 'extract') currentPrompt = EXTRACT_PROMPT;
             
-            const promptText = `${currentPrompt}\n用户身份: ${activeIdentity.value.name}\n目标项目: ${web3Project.value.name}`;
+            const promptText = `${currentPrompt}\n用户身份: ${activeIdentity.value.name}\n目标项目/内容: ${web3Project.value.name}`;
             
             let rawText = "";
 
-            // ... (中间的 DeepSeek/Gemini 请求代码保持不变) ...
-            // ... (省略 fetch 代码，跟之前一样) ...
-            
-            // 假设这里 fetch 完了，拿到 rawText
              if (aiConfig.model === 'deepseek-chat') {
-                 // ... DeepSeek 请求代码 ...
+                 // DeepSeek 请求代码
                  const response = await fetch("https://api.deepseek.com/chat/completions", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${aiConfig.key}` },
@@ -1917,7 +1915,7 @@ const handleSync = async (direction) => {
                 const data = await response.json();
                 rawText = data.choices[0].message.content;
              } else {
-                 // ... Gemini 请求代码 ...
+                 // Gemini 请求代码
                  const response = await fetch(`${GEMINI_PROXY}/v1beta/models/${aiConfig.model}:generateContent?key=${aiConfig.key}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1927,7 +1925,6 @@ const handleSync = async (direction) => {
                 rawText = data.candidates[0].content.parts[0].text;
              }
             
-
             console.log("AI 回传:", rawText);
             const jsonMatch = rawText.match(/\{[\s\S]*\}/); 
             
@@ -1937,34 +1934,33 @@ const handleSync = async (direction) => {
                 addToHistory(promptText, cleanJson);
                 
                 // 🧹 清空旧数据
-            web3Project.value.plans = [];
+                web3Project.value.plans = [];
 
-            if (isStrategyMode.value) {
-                // ♟️ 战略模式：读取 options 数组
-                if (cleanJson.options && Array.isArray(cleanJson.options)) {
-                    web3Project.value.plans = cleanJson.options;
+                if (labMode.value === 'strategy') {
+                    // ♟️ 战略模式：读取 options 数组
+                    if (cleanJson.options && Array.isArray(cleanJson.options)) {
+                        web3Project.value.plans = cleanJson.options;
+                    } else {
+                        // 容错：如果 AI 还是吐了单个对象
+                        web3Project.value.plans = [cleanJson];
+                    }
                 } else {
-                    // 容错：如果 AI 还是吐了单个对象
-                    web3Project.value.plans = [cleanJson];
+                    // ⚡ 闪电模式 和 📥 萃取模式：构造成一个单元素数组，方便统一 UI
+                    web3Project.value.plans = [{
+                        type: labMode.value === 'extract' ? '💡 灵感萃取' : '⚡ 极速行动',
+                        analysis: cleanJson.stretchGoal, // 映射字段
+                        setupAction: cleanJson.atomicStart,
+                        milestones: cleanJson.steps || []
+                    }];
                 }
-            } else {
-                // ⚡ 闪电模式：构造成一个单元素数组，方便统一 UI
-                web3Project.value.plans = [{
-                    type: '⚡ 极速行动',
-                    analysis: cleanJson.stretchGoal, // 映射字段
-                    setupAction: cleanJson.atomicStart,
-                    milestones: cleanJson.steps || []
-                }];
-            }
-            web3Project.value.selectedPlanIndex = 0;
-            return;
+                web3Project.value.selectedPlanIndex = 0;
+                return;
             }
             throw new Error("格式解析失败");
 
         } catch (e) {
             console.error(e);
-            alert("AI 请求失败，切换模拟数据...");
-            // 模拟数据也可以做分支，这里简略
+            alert("AI 请求失败，请检查网络或 API Key");
         } finally {
             isAnalyzing.value = false;
         }
@@ -2064,24 +2060,24 @@ const handleSync = async (direction) => {
             }, 10);
         }
     } else {
-        
-            // === ⚡ 闪电模式：单点突破 ===
-            // 保持原有的简单逻辑，快速生成一个任务
-            tasks.value.unshift({
-                id: Date.now(),
-                text: `⚡ ${web3Project.value.atomicStart || web3Project.value.name}`,
-                q: 1, // 闪电行动通常比较急，放 Q1 或 Inbox
-                done: false,
-                duration: 0.5,
-                startDate: todayStr,
-                endDate: todayStr,
-                repeat: 'none',
-                accumulated: 0,
-                log: [],
-                expanded: true,
-                subtasks: subtasks
-            });
-        }
+    // === ⚡ 闪电模式 & 萃取模式：单点突破 ===
+    tasks.value.unshift({
+            id: Date.now(),
+            // 萃取出来的用💡图标，闪电用⚡
+            text: labMode.value === 'extract' ? `💡 ${web3Project.value.atomicStart}` : `⚡ ${web3Project.value.atomicStart || web3Project.value.name}`,
+            // 💡 萃取的任务放入 Inbox(Q0) 让你自己安排，闪电任务直接进 Q1
+            q: labMode.value === 'extract' ? 0 : 1, 
+            done: false,
+            duration: 0.5,
+            startDate: todayStr,
+            endDate: todayStr,
+            repeat: 'none',
+            accumulated: 0,
+            log: [],
+            expanded: true,
+            subtasks: subtasks
+        });
+    }
 
         // 部署完成后，跳转回“今日专注”页查看成果
         currentTab.value = 'now'; 
@@ -2222,7 +2218,7 @@ const handleSync = async (direction) => {
         showAiConfigModal, aiConfig, saveAiConfig,
         showAddIdentityModal, showEditIdentityModal, newIdentityInput, editIdentityInput,
         openAddIdentityModal, confirmAddIdentity, confirmEditIdentity, deleteIdentity,
-        startIdentityPress, clearIdentityPress,isAnalyzing, runAiAnalysis, startEvolution,isStrategyMode,
+        startIdentityPress, clearIdentityPress,isAnalyzing, runAiAnalysis, startEvolution,labMode,
         labHistory, addToHistory, deleteHistory, restoreHistory,handleProgressScroll,
         isBottomPanelExpanded, toggleBottomPanel, handlePanelTouchStart, handlePanelTouchEnd,
         showYearlyGoals, isEditingWishes, yearlyWishes, visionTitle, addWish, deleteWish,
