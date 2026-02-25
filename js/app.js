@@ -1670,21 +1670,41 @@ const handleSync = async (direction) => {
                 }
             };
 
-            // --- 倒数日左滑删除逻辑 ---
+            // --- 倒数日左滑删除逻辑 & 长按逻辑 ---
             const swipeItemId = ref(null); // 记录当前哪个 ID 被滑开了
             const startX = ref(0);
             const currentOffsetX = ref(0);
+            let swipeStartY = 0; 
+            let swipeLongPressTimer = null; 
+            let isSwipeLongPress = false; 
 
-            const handleSwipeStart = (e, id) => {
-                // 如果点的是已经滑开的，就别重置了
+            const handleSwipeStart = (e, id, item = null, type = '') => {
                 if (swipeItemId.value !== id) {
                     swipeItemId.value = null; 
                 }
                 startX.value = e.touches[0].clientX;
+                swipeStartY = e.touches[0].clientY;
+                
+                // 新增：长按触发逻辑
+                isSwipeLongPress = false;
+                if (item && type === 'countdown') {
+                    swipeLongPressTimer = setTimeout(() => {
+                        isSwipeLongPress = true;
+                        if(navigator.vibrate) navigator.vibrate(50);
+                        openCountdownModal('edit', item); // 唤起编辑弹窗
+                    }, 600);
+                }
             };
 
             const handleSwipeMove = (e, id) => {
                 const deltaX = e.touches[0].clientX - startX.value;
+                const deltaY = e.touches[0].clientY - swipeStartY;
+                
+                // 新增：如果手指移动超过 10px (说明在滚动或滑除)，立刻取消长按
+                if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+                    clearTimeout(swipeLongPressTimer);
+                }
+
                 // 只有向左滑且滑动距离大于 10px 才触发预览
                 if (deltaX < -10) {
                     currentOffsetX.value = deltaX;
@@ -1692,6 +1712,8 @@ const handleSync = async (direction) => {
             };
 
             const handleSwipeEnd = (e, id) => {
+                clearTimeout(swipeLongPressTimer); // 手指离开，清理长按定时器
+
                 // 如果滑动超过 50px，就保持打开状态
                 if (currentOffsetX.value < -50) {
                     swipeItemId.value = id;
@@ -1701,7 +1723,13 @@ const handleSync = async (direction) => {
                 currentOffsetX.value = 0;
             };
 
-            // --- 🔄 新增：刷新页面的逻辑 ---
+            // 新增：专用于倒数日的点击处理
+            const handleCountdownClick = (id) => {
+                if (isSwipeLongPress) return; // 如果刚刚触发了长按，屏蔽本次单击
+                if (swipeItemId.value === id) {
+                    swipeItemId.value = null; // 如果当前是滑开状态，单击将其收起
+                }
+            };
             
             // 方案A: 双击 Logo 刷新
             // 使用时间差判断双击，比 @dblclick 在手机上反应更快
@@ -2215,7 +2243,7 @@ const handleSync = async (direction) => {
         handleTouchStart, handleTouchMove, handleTouchEnd, handleTaskClick, handleSubtaskClick, addSubtask, toggleSubtask, deleteSubtask, editSubtask, handleBackgroundClick,
         showProgressModal, progressForm, progressInputRef, saveTaskProgress,
         swipeItemId, startX, currentOffsetX, handleSwipeStart, handleSwipeMove, handleSwipeEnd,
-        handleTileClick, editTaskProgress, handleProgressItemClick,
+        handleTileClick, editTaskProgress, handleProgressItemClick, handleCountdownClick,
         isLogoAnimating, handleLogoClick, handleFocusTabClick, showRestoreModal, restorePromptText, confirmRestore,
         showAiConfigModal, aiConfig, saveAiConfig,
         showAddIdentityModal, showEditIdentityModal, newIdentityInput, editIdentityInput,
