@@ -1325,10 +1325,10 @@
             删除
         </div>
 
-        <div @touchstart="handleSwipeStart($event, day.id)"
+        <div @touchstart="handleSwipeStart($event, day.id, day, 'countdown')"
              @touchmove="handleSwipeMove($event, day.id)"
              @touchend="handleSwipeEnd($event, day.id)"
-             @click="swipeItemId === day.id ? swipeItemId = null : openCountdownModal('edit', day)"
+             @click="handleCountdownClick(day.id)"
              class="swipe-content bg-white dark:bg-gray-800 rounded-2xl p-4 flex items-center shadow-sm border border-gray-100 dark:border-gray-700 active:scale-95 transition-all"
              :style="{ transform: swipeItemId === day.id ? 'translateX(-80px)' : 'translateX(0)' }">
             
@@ -1371,10 +1371,10 @@
                         删除
                     </div>
 
-                    <div @touchstart="handleSwipeStart($event, day.id)"
+                    <div @touchstart="handleSwipeStart($event, day.id, day, 'countdown')"
                         @touchmove="handleSwipeMove($event, day.id)"
                         @touchend="handleSwipeEnd($event, day.id)"
-                        @click="swipeItemId === day.id ? swipeItemId = null : openCountdownModal('edit', day)"
+                        @click="handleCountdownClick(day.id)"
                         class="swipe-content bg-white dark:bg-gray-800 rounded-xl p-3 flex items-center border-l-4 border-gray-300 shadow-sm"
                         :style="{ transform: swipeItemId === day.id ? 'translateX(-80px)' : 'translateX(0)' }">
                         
