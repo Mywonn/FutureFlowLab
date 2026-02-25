@@ -2098,7 +2098,7 @@ const handleSync = async (direction) => {
             tasks.value.unshift({
                 id: Date.now(),
                 text: isExtract ? `💡 ${mainText}` : `⚡ ${mainText}`,
-                q: isExtract ? 0 : 1, // 💡 萃取放入 Inbox(Q0)，⚡ 闪电放入 Q1
+                q: isExtract ? 2 : 1, // 💡 萃取放入 Inbox(Q2)，⚡ 闪电放入 Q1
                 done: false,
                 date: dateKey, // 🐛 核心修复 3：补全 date 字段，不再离奇失踪
                 duration: 0.5,
@@ -2295,3 +2295,4 @@ const handleSync = async (direction) => {
         }, 100);
 
     });
+
