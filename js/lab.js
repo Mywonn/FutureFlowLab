@@ -83,6 +83,9 @@ export function useLab() {
     // 👇 状态升级：'flash' | 'strategy' | 'extract'
     const labMode = ref('flash');
 
+    // 👇 新增：顶层双模式切换 ('awake' = 觉醒实验室, 'finance' = 金融交易)
+    const labSubTab = ref('awake');
+
     const saveIdentities = () => {
         localStorage.setItem('ff_custom_identities', JSON.stringify(identities.value));
     };
@@ -151,7 +154,7 @@ export function useLab() {
 
     return {
         identities, activeIdentity, web3Project, saveIdentities,
-        labMode, FLASH_PROMPT, STRATEGY_PROMPT, EXTRACT_PROMPT,
+        labMode, labSubTab, FLASH_PROMPT, STRATEGY_PROMPT, EXTRACT_PROMPT,
         labHistory, addToHistory, deleteHistory, restoreHistory,
     };
 
