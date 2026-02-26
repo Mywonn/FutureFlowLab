@@ -139,9 +139,16 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
             // ==========================================
             const isFinanceUnlocked = ref(false); // 当前会话是否已放行
             
-            // 模拟的云端复盘数据 -> 改为真实状态
-            const dailyReportData = ref(null); // 默认不显示，等拉到真实数据再弹出来
+            // 🗄️ 建立本地研报历史档案库
+            const reportHistory = ref(JSON.parse(localStorage.getItem('ff_report_history')) || []);
+            const currentViewReport = ref(null); // 当前正在屏幕上看的报告
+            const showReportArchiveModal = ref(false); // 控制档案列表侧边栏
             const showReportDetail = ref(false); 
+
+            // 动态计算：只把【最新且未读】的那条挑出来放在顶部
+            const dailyReportData = computed(() => reportHistory.value.find(r => !r.isRead) || null);
+            // 动态计算：已经读过的，全部扔进档案库
+            const archivedReports = computed(() => reportHistory.value.filter(r => r.isRead));
 
             // 📡 自动去 Gist 拉取真实的每日复盘数据
             const fetchDailyReportFromGist = async () => {
@@ -164,13 +171,26 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                     if (data.files && data.files['ff_finance_report.json']) {
                         const reportJson = JSON.parse(data.files['ff_finance_report.json'].content);
                         
-                        const todayStr = new Date().toLocaleDateString('zh-CN', {month:'2-digit', day:'2-digit'}).replace('/', '-');
-                        const lastReadDate = localStorage.getItem('ff_report_read_date'); // 读取本地的已读记录
+                        // 生成内容指纹
+                        const fingerprint = reportJson.date + '_' + (reportJson.content ? reportJson.content.length : '0');
                         
-                        // 逻辑：必须是当天的报告，且【今天还没标记过已读】，才显示红点并置顶
-                        reportJson.hasNew = (reportJson.date === todayStr) && (lastReadDate !== todayStr); 
+                        // 检查本地库里有没有这条记录
+                        const exists = reportHistory.value.some(r => r.fingerprint === fingerprint);
                         
-                        dailyReportData.value = reportJson;
+                        if (!exists) {
+                            // 全新报告！打上未读标签，塞进历史库的最前面
+                            reportJson.fingerprint = fingerprint;
+                            reportJson.id = Date.now();
+                            reportJson.isRead = false; 
+                            reportJson.hasNew = true; // 兼容 UI 字段
+                            
+                            reportHistory.value.unshift(reportJson);
+                            
+                            // 限制最多存 50 条，防止本地存储爆炸
+                            if (reportHistory.value.length > 50) reportHistory.value.pop();
+                            
+                            localStorage.setItem('ff_report_history', JSON.stringify(reportHistory.value));
+                        }
                     }
                 } catch (error) {
                     console.error("❌ 获取复盘数据失败:", error);
@@ -200,16 +220,28 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                 if (target === 'finance') {
                     labSubTab.value = 'finance';
                 } else if (target === 'report') {
-                    showReportDetail.value = true;
-                    // 当用户打开报告时，标记为已读并沉底
-                    if (dailyReportData.value && dailyReportData.value.hasNew) {
-                        dailyReportData.value.hasNew = false; 
+                    // 打开最新的未读报告
+                    if (dailyReportData.value) {
+                        currentViewReport.value = dailyReportData.value;
+                        showReportDetail.value = true;
                         
-                        // 记录今天已经读过，刷新页面也不会再跳回去了
-                        const todayStr = new Date().toLocaleDateString('zh-CN', {month:'2-digit', day:'2-digit'}).replace('/', '-');
-                        localStorage.setItem('ff_report_read_date', todayStr);
+                        // 找到它，标记为已读并保存，它会自动沉底到档案库
+                        const targetReport = reportHistory.value.find(r => r.id === dailyReportData.value.id);
+                        if (targetReport) {
+                            targetReport.isRead = true;
+                            targetReport.hasNew = false;
+                            localStorage.setItem('ff_report_history', JSON.stringify(reportHistory.value));
+                        }
                     }
+                } else if (target === 'archive') {
+                    // 点击暗黑胶囊，打开档案列表
+                    showReportArchiveModal.value = true;
                 }
+            };
+            // 供档案库点击查看历史报告使用
+            const viewArchivedReport = (report) => {
+                currentViewReport.value = report;
+                showReportDetail.value = true;
             };
             
 
@@ -222,6 +254,113 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
             const getAssetName = (key) => {
                 const map = { us10y: '10年美债 (锚)', dxy: '美元指数 (水)', gold: '黄金 (避险)', spx: '标普500 (基石)', ndx: '纳斯达克 (矛)', btc: '比特币 (鸟)' };
                 return map[key] || key.toUpperCase();
+            };
+
+            const showMacroModal = ref(false);
+            const currentMacroAssetKey = ref('');
+            const currentMacroAssetData = ref(null);
+
+            // 🌟 升级版：带“休市感知”的日期推算算法
+            const generateRecentDates = (length, assetKey) => {
+                const dates = [];
+                let d = new Date();
+                
+                // 判断是否为 7x24 交易的加密资产 (目前主要是 btc)
+                const isCrypto = (assetKey === 'btc');
+
+                // 1. 如果是传统资产，且你刚好在周末打开看，先把“起点”拨回最近的周五
+                if (!isCrypto) {
+                    while (d.getDay() === 0 || d.getDay() === 6) { // 0是周日，6是周六
+                        d.setDate(d.getDate() - 1);
+                    }
+                }
+
+                // 2. 往前倒推生成坐标轴
+                for (let i = 0; i < length; i++) {
+                    // 每次把日期塞进数组最前面（保证从左到右是从过去到现在）
+                    dates.unshift(`${d.getMonth() + 1}/${d.getDate()}`); 
+                    
+                    // 往前拨一天
+                    d.setDate(d.getDate() - 1);
+                    
+                    // 如果是传统资产，遇到周末直接跳过，继续往前拨
+                    if (!isCrypto) {
+                        while (d.getDay() === 0 || d.getDay() === 6) {
+                            d.setDate(d.getDate() - 1);
+                        }
+                    }
+                }
+                return dates;
+            };
+
+            // 打开宏观大图
+            const openMacroDetail = (key, asset) => {
+                currentMacroAssetKey.value = key;
+                currentMacroAssetData.value = asset;
+                showMacroModal.value = true;
+                
+                nextTick(() => {
+                    const dom = document.getElementById('macro-detail-chart');
+                    if (dom && window.echarts) {
+                        const existingChart = window.echarts.getInstanceByDom(dom);
+                        if (existingChart) existingChart.dispose();
+                        
+                        const chart = window.echarts.init(dom);
+                        const lineData = asset.sparkline;
+                        const isUp = asset.change_pct >= 0;
+                        const color = isUp ? '#10b981' : '#ef4444'; 
+                        
+                        // 🌟 传入 key，让算法知道现在画的是 BTC 还是标普
+                        const xDates = generateRecentDates(lineData.length, key);
+                        
+                        chart.setOption({
+                            tooltip: {
+                                trigger: 'axis',
+                                backgroundColor: 'rgba(15, 23, 42, 0.95)', 
+                                borderColor: '#334155',
+                                padding: [8, 12],
+                                textStyle: { color: '#f1f5f9', fontSize: 12 },
+                                formatter: function (params) {
+                                    return `<div class="font-bold text-gray-400 text-[10px] mb-1">${params[0].name}</div>
+                                            <div class="flex items-center">
+                                                <span style="color:${color};font-size:14px;margin-right:6px;">●</span>
+                                                <span class="font-black text-white text-lg">${params[0].value}</span>
+                                            </div>`;
+                                }
+                            },
+                            grid: { top: 15, bottom: 20, left: 5, right: 15, containLabel: true },
+                            xAxis: { 
+                                type: 'category', 
+                                data: xDates,
+                                boundaryGap: false,
+                                axisLine: { lineStyle: { color: '#1e293b' } },
+                                axisLabel: { color: '#64748b', fontSize: 10, margin: 12 },
+                                axisTick: { show: false }
+                            },
+                            yAxis: { 
+                                type: 'value', 
+                                scale: true, // 开启自适应缩放，精确显示振幅
+                                splitLine: { lineStyle: { color: '#1e293b', type: 'dashed' } },
+                                axisLabel: { color: '#64748b', fontSize: 10, formatter: '{value}' }
+                            },
+                            series: [{
+                                data: lineData, 
+                                type: 'line', 
+                                smooth: true, 
+                                showSymbol: false,
+                                symbolSize: 6,
+                                lineStyle: { color: color, width: 3 },
+                                areaStyle: { 
+                                    color: new window.echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                        { offset: 0, color: color + '50' }, 
+                                        { offset: 1, color: color + '00' }
+                                    ]) 
+                                },
+                                emphasis: { focus: 'series' }
+                            }]
+                        });
+                    }
+                });
             };
 
             const fetchMacroData = async () => {
@@ -358,21 +497,17 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                     stockAiInsight.value = "❌ AI 诊断请求超时或失败。";
                 }
             };
+            const financeMode = ref('macro'); // 默认显示宏观监控
 
             // ✅ 修复折线图消失问题：内部面板切换时重绘
-            watch(labSubTab, (newVal) => {
-                if (newVal === 'finance') {
-                    if (macroData.value) {
-                        nextTick(() => drawSparklines(macroData.value.assets));
-                        if (stockData.value) {
-                             nextTick(() => drawStockChart()); // 使用新函数
-                        }
-                    } else {
-                        fetchMacroData();
-                    }
+           watch(financeMode, (newVal) => {
+                if (newVal === 'macro' && macroData.value) {
+                    nextTick(() => drawSparklines(macroData.value.assets));
+                } else if (newVal === 'stock' && stockData.value) {
+                    nextTick(() => drawStockChart());
                 }
             });
-
+            
             // --- 原有逻辑 ---
             const currentTab = ref('now');
             const showHistoryModal = ref(false);
@@ -556,38 +691,19 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
 
             const quadrantTitles = ['重要紧急 🔥', '重要不紧急 📅', '不重要紧急 🔔', '不重要不紧急 🗑️'];
 
-            // --- 监听Tab切换 ---
-            watch(currentTab, (newTab, oldTab) => {
-                swipeItemId.value = null;
-                
-                if (['now', 'quadrant', 'lab'].includes(newTab)) {
-                    showCalendar.value = false;
-                } else {
-                    showCalendar.value = true; 
-                }
-
-                if (oldTab === 'now' || oldTab === 'quadrant') {
-                    tasks.value.forEach(t => { t.expanded = false; });
-                }
-                
-                if (newTab === 'now' || newTab === 'quadrant') {
-                    jumpToToday(); 
-                }
-
-                // 👇 🌟 核心修复在这里：如果切回了实验室，并且当前停留在交易面板，强制重绘！
-                if (newTab === 'lab' && labSubTab.value === 'finance') {
-                    nextTick(() => {
-                        // 1. 恢复宏观走势图
-                        if (macroData.value && macroData.value.assets) {
-                            drawSparklines(macroData.value.assets);
+            watch(labSubTab, (newTab) => {
+                if (newTab === 'finance') {
+                    if (financeMode.value === 'macro') {
+                        if (!macroData.value) {
+                            fetchMacroData(); // 没有数据就去拉
                         } else {
-                            fetchMacroData(); // 没数据就重新拉
+                            nextTick(() => drawSparklines(macroData.value.assets));
                         }
-                        // 2. 恢复个股走势图
+                    } else if (financeMode.value === 'stock') {
                         if (stockData.value) {
-                            drawStockChart();
+                            nextTick(() => drawStockChart());
                         }
-                    });
+                    }
                 }
             });
 
@@ -629,6 +745,9 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                         } else {
                             // 如果还是同一天，重新校准一下倒计时 (因为休眠时 setTimeout 会不准)
                             handleMidnightRefresh();
+                            
+                            // ✨ 核心新增：每次从 TG/微信切回 App，或者手机重新亮起，静默拉取一下看有没有新报告
+                            fetchDailyReportFromGist();
                         }
                         // 更新一下“最后活跃日期”
                         localStorage.setItem('last_active_date', today);
@@ -2468,7 +2587,10 @@ const handleSync = async (direction) => {
         isDark, 
         toggleTheme,
         identities, activeIdentity, web3Project, saveIdentities,
-        showHistoryModal,isFinanceUnlocked, requestUnlock, dailyReportData, showReportDetail, macroData, isMacroLoading, getAssetName, searchTicker, stockData, isStockLoading, stockAiInsight, analyzeStock,
+        showHistoryModal,isFinanceUnlocked, requestUnlock, dailyReportData, showReportDetail, reportHistory, archivedReports, showReportArchiveModal, currentViewReport, viewArchivedReport,
+        macroData, isMacroLoading, getAssetName,showMacroModal, currentMacroAssetKey, currentMacroAssetData, openMacroDetail, 
+        searchTicker, stockData, isStockLoading, stockAiInsight, analyzeStock,
+        financeMode,
         currentTab, showProgressFloatBtn,showCalendar, toggleCalendar: () => showCalendar.value = !showCalendar.value,
         stripDays, handleHeaderTouchStart, handleHeaderTouchEnd,
         dateScrollContainer, touchStart, touchEnd,
