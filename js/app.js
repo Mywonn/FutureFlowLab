@@ -2254,17 +2254,26 @@ const handleSync = async (direction) => {
     };
 
     const confirmAddIdentity = () => {
-        if (!newIdentityInput.value.trim()) return;
+    if (!newIdentityInput.value.trim()) return;
+
+    // ✅ 1. 强制让输入框失去焦点，触发手机键盘收起动作
+    if (document.activeElement) {
+        document.activeElement.blur();
+    }
+
+    // ✅ 2. 延迟 150 毫秒：等键盘开始收缩、页面 dvh 停止剧烈抖动后，再操作 DOM
+    setTimeout(() => {
         const newId = { id: 'custom-' + Date.now(), name: newIdentityInput.value, icon: '✨', color: 'indigo' };
         
-        // ✅ 改为解构赋值，强制触发完整的 DOM 重绘
+        // 依然保留解构赋值，确保 Vue 强刷新
         identities.value = [...identities.value, newId]; 
         
         activeIdentity.value = newId;
         saveIdentities(); 
         newIdentityInput.value = '';
         showAddIdentityModal.value = false;
-    };
+    }, 150);
+};
 
     const confirmEditIdentity = () => {
         if (!editIdentityInput.value.trim() || !editingIdentity.value) return;
