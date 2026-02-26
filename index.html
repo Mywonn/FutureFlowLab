@@ -16,6 +16,7 @@
     
     <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -278,7 +279,8 @@
      @dblclick.stop.prevent
      v-cloak>
 
-    <div class="relative bg-blue-600 dark:bg-gray-800 text-white shadow-md z-40 flex-shrink-0 transition-all duration-300 border-b dark:border-gray-700 safe-top">
+    <div :class="(currentTab === 'lab' && labSubTab === 'finance') ? 'bg-black border-gray-900' : 'bg-blue-600 dark:bg-gray-800 border-gray-100 dark:border-gray-700'"
+         class="relative text-white shadow-md z-40 flex-shrink-0 transition-all duration-300 border-b safe-top">
         
         <div class="flex flex-col w-full">
             <div class="px-4 py-2 flex justify-between items-center relative">
@@ -424,28 +426,34 @@
    
 
     <div class="flex-1 overflow-hidden relative bg-white dark:bg-gray-900 flex flex-col">
-        <div v-if="currentTab === 'lab'" class="h-full p-6 space-y-6 bg-slate-50 dark:bg-gray-950 overflow-y-auto pb-20">
+        <div v-if="currentTab === 'lab'" class="h-full flex flex-col overflow-hidden transition-colors duration-300" :class="labSubTab === 'finance' ? 'bg-black' : 'bg-slate-50 dark:bg-gray-950'">
             
-            <div class="flex justify-between items-center mb-6 mt-1">
-                <div class="flex flex-col justify-center">
-                    <h2 class="text-2xl font-black text-indigo-600 dark:text-indigo-400 leading-none tracking-tight">觉醒实验室</h2>
-                    <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1.5">Awakening Lab</p>
-                </div>
-                
-                <div class="flex items-center bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-1">
-                    <button @click="showHistoryModal = true" 
-                            class="w-10 h-9 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl active:scale-95 transition-all">
-                        <span class="text-base opacity-80 hover:opacity-100">📜</span>
-                    </button>
+            <div class="shrink-0 px-4 pt-6 pb-2 z-50">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center bg-gray-200/60 dark:bg-gray-800 p-1 rounded-2xl shadow-inner border border-gray-100 dark:border-gray-700">
+                        <button @click="labSubTab = 'awake'" 
+                                :class="labSubTab === 'awake' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
+                                class="px-5 py-1.5 rounded-xl text-sm font-black transition-all flex items-center justify-center">
+                            <span class="mr-1">🧬</span> 觉醒
+                        </button>
+                        <button @click="requestUnlock('finance')" 
+                                :class="labSubTab === 'finance' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
+                                class="px-5 py-1.5 rounded-xl text-sm font-black transition-all flex items-center justify-center relative">
+                            <span class="mr-1" v-if="!isFinanceUnlocked">🔒</span>
+                            <span class="mr-1" v-else>📈</span> 交易
+                            <span v-if="labSubTab !== 'finance' && !isFinanceUnlocked" class="absolute top-1.5 right-2 w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_5px_rgba(239,68,68,0.8)]"></span>
+                        </button>
+                    </div>
                     
-                    <div class="w-px h-4 bg-gray-100 dark:bg-gray-700 mx-0.5"></div>
-                    
-                    <button @click="showAiConfigModal = true" 
-                            class="w-10 h-9 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl active:scale-95 transition-all">
-                        <span class="text-base opacity-80 hover:opacity-100">⚙️</span>
-                    </button>
+                    <div class="flex items-center bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-1">
+                        <button @click="showHistoryModal = true" class="w-10 h-9 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl active:scale-95 transition-all"><span class="text-base opacity-80 hover:opacity-100">📜</span></button>
+                        <div class="w-px h-4 bg-gray-100 dark:bg-gray-700 mx-0.5"></div>
+                        <button @click="showAiConfigModal = true" class="w-10 h-9 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl active:scale-95 transition-all"><span class="text-base opacity-80 hover:opacity-100">⚙️</span></button>
+                    </div>
                 </div>
             </div>
+            
+            <div v-show="labSubTab === 'awake'" class="animate-fade-in space-y-6 px-4 flex-1 overflow-y-auto no-scrollbar">
 
             <div class="bg-indigo-600 dark:bg-indigo-900 rounded-3xl p-6 text-white mb-6 relative overflow-hidden shadow-lg shadow-indigo-200 dark:shadow-none animate-fade-in">
                 <div class="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 bg-white opacity-10 rounded-full blur-2xl"></div>
@@ -504,7 +512,7 @@
             </div>
 
             <div class="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-indigo-50 dark:border-indigo-900/20 animate-fade-in">
-                <div v-if="identities.length > 0" class="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-indigo-50 dark:border-indigo-900/20 animate-fade-in">
+                <div v-if="identities.length > 0" class="w-full">
                 
                 <div class="mb-4 flex flex-col space-y-3 w-full">
                     <h3 class="text-indigo-600 dark:text-indigo-400 font-black text-sm uppercase tracking-tighter">
@@ -664,13 +672,112 @@
                     <span class="relative z-10 text-[10px] opacity-80 font-normal mt-0.5">
                         {{ web3Project.plans[web3Project.selectedPlanIndex]?.type || 'Standard Plan' }}
                     </span>
-                    <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                   <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                 </button>
             </div>
 
-        </div> 
- 
+            </div> 
+            <div v-if="labSubTab === 'finance'" class="animate-fade-in pb-32 flex-1 overflow-y-auto no-scrollbar px-4 bg-black">
+                <div class="space-y-4 text-gray-300 relative pt-4">
+                    
+                    <div class="absolute -top-10 -right-10 w-40 h-40 bg-blue-600 opacity-20 blur-[50px] rounded-full pointer-events-none"></div>
+                    
+                    <div class="flex justify-between items-center mb-6 relative z-10">
+                        <div>
+                            <h3 class="text-lg font-black text-white tracking-wide">宏观监控</h3>
+                            <p class="text-[9px] text-gray-500 uppercase font-mono mt-1">Live Global Macro</p>
+                        </div>
+                        <span class="text-[9px] bg-blue-900/40 text-blue-400 px-2.5 py-1 rounded border border-blue-800/50 font-bold tracking-widest">BETA</span>
+                    </div>
 
+                    <div v-if="isMacroLoading" class="py-12 flex flex-col items-center justify-center space-y-3 opacity-50">
+                        <div class="w-8 h-8 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+                        <span class="text-xs font-bold text-gray-400">正在接入全球金融数据库...</span>
+                    </div>
+
+                    <div v-else-if="macroData" class="grid grid-cols-2 gap-3 mb-6 relative z-10">
+                        <div v-for="(asset, key) in macroData.assets" :key="key" 
+                             class="bg-[#151E32]/80 backdrop-blur-sm rounded-2xl p-3 border border-gray-700/50 flex flex-col hover:border-blue-500/30 transition-colors">
+                            <span class="text-[9px] text-gray-500 font-bold mb-1">{{ getAssetName(key) }}</span>
+                            <div class="flex items-baseline space-x-2">
+                                <span class="text-lg font-black text-white">{{ asset.current }}</span>
+                                <span class="text-[9px] font-bold" :class="asset.change_pct >= 0 ? 'text-green-400 drop-shadow-[0_0_3px_rgba(74,222,128,0.5)]' : 'text-red-400 drop-shadow-[0_0_3px_rgba(239,68,68,0.5)]'">
+                                    {{ asset.change_pct >= 0 ? '+' : '' }}{{ asset.change_pct }}%
+                                </span>
+                            </div>
+                            <div :id="'chart-' + key" class="w-full h-10 mt-1"></div>
+                        </div>
+                    </div>
+
+                    <div v-if="macroData && macroData.mentor_insight" class="relative z-10 bg-blue-900/20 border border-blue-800/50 rounded-2xl p-4 mb-6">
+                        <h4 class="text-xs font-bold mb-2 flex items-center" :class="{'text-red-400': macroData.mentor_insight.type === 'risk', 'text-green-400': macroData.mentor_insight.type === 'opportunity', 'text-blue-400': macroData.mentor_insight.type === 'neutral'}">
+                            <span class="mr-1 text-base">💬</span> AI 导师点评：{{ macroData.mentor_insight.title }}
+                        </h4>
+                        <p class="text-[11px] text-gray-300 leading-relaxed font-medium">{{ macroData.mentor_insight.content }}</p>
+                    </div>
+
+                    <div class="flex items-center bg-[#151E32] rounded-2xl p-1.5 border border-gray-700/50 focus-within:border-blue-500/50 transition-colors relative z-10 shadow-inner mt-4">
+                        <span class="pl-3 text-gray-500 text-lg">🔍</span>
+                        <input v-model="searchTicker" @keyup.enter="analyzeStock" type="text" placeholder="输入代码 (如 NVDA/BTC-USD)..." class="bg-transparent flex-1 px-3 py-2 text-sm outline-none text-white placeholder-gray-600 font-mono font-bold uppercase">
+                        <button @click="analyzeStock" :disabled="isStockLoading" class="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 text-white px-5 py-2 rounded-xl text-xs font-black transition active:scale-95">
+                            {{ isStockLoading ? '扫描中...' : '解析' }}
+                        </button>
+                    </div>
+
+                    <div v-if="stockData" class="mt-4 bg-[#151E32]/80 backdrop-blur-sm rounded-2xl p-4 border border-gray-700/50 relative z-10 animate-fade-in">
+                        
+                        <div class="flex justify-between items-center border-b border-gray-700/50 pb-3 mb-3">
+                            <div>
+                                <h4 class="text-xl font-black text-white">{{ stockData.ticker }}</h4>
+                                <div class="flex items-center space-x-2 mt-1">
+                                    <span class="text-lg font-bold text-gray-200">${{ stockData.price }}</span>
+                                </div>
+                            </div>
+                            <div class="text-right flex flex-col items-end">
+                                <span class="text-[9px] text-gray-500 font-bold mb-1 tracking-widest uppercase">RSI (强弱)</span>
+                                <div class="text-xl font-black" :class="stockData.indicators.rsi > 70 ? 'text-red-400' : (stockData.indicators.rsi < 30 ? 'text-green-400' : 'text-gray-300')">
+                                    {{ stockData.indicators.rsi.toFixed(1) }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 mb-4">
+                            <div class="bg-[#0B1120] rounded-xl p-3 border border-gray-800">
+                                <span class="text-[9px] text-gray-500 font-bold block mb-1">ALPHA (超额率)</span>
+                                <span class="text-sm font-black" :class="stockData.indicators.alpha > 0 ? 'text-green-400' : 'text-red-400'">
+                                    {{ stockData.indicators.alpha > 0 ? '+' : '' }}{{ stockData.indicators.alpha.toFixed(2) }}%
+                                </span>
+                            </div>
+                            <div class="bg-[#0B1120] rounded-xl p-3 border border-gray-800">
+                                <span class="text-[9px] text-gray-500 font-bold block mb-1">PEG (估值倍数)</span>
+                                <span class="text-sm font-black text-gray-300">
+                                    {{ stockData.indicators.peg ? stockData.indicators.peg.toFixed(2) : 'N/A' }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                             <div class="flex justify-between items-end mb-1">
+                                 <span class="text-[9px] text-gray-500 font-bold block">近 30 天走势轨迹</span>
+                             </div>
+                             <div id="stock-chart" class="w-full h-12 bg-[#0B1120] rounded-lg border border-gray-800/50"></div>
+                        </div>
+
+                        <div class="bg-blue-900/20 border border-blue-800/50 rounded-xl p-3 relative overflow-hidden">
+                             <div class="absolute -right-2 -top-2 text-4xl opacity-10">🤖</div>
+                             <span class="text-[10px] text-blue-400 font-bold block mb-2 flex items-center">
+                                 <span class="mr-1">⚡</span> 智脑战略诊断
+                             </span>
+                             <p class="text-xs text-gray-300 leading-relaxed font-medium">
+                                 {{ stockAiInsight }}
+                             </p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
 
      <div v-if="currentTab === 'now'" class="h-full flex flex-col relative">
             
@@ -702,6 +809,27 @@
                 <div class="flex-1 overflow-y-auto px-4 pt-2 pb-32 space-y-2"
                         @touchstart="handlePageTouchStart"
                         @touchend="handlePageTouchEnd">
+
+                       <div v-if="dailyReportData && dailyReportData.hasNew" class="mb-3 animate-fade-in relative z-10 shrink-0">
+                        <div @click="requestUnlock('report')" 
+                             class="bg-gradient-to-r from-[#0B1120] to-[#151E32] rounded-2xl p-3 shadow-md flex items-center justify-between border border-gray-800 cursor-pointer active:scale-95 transition-transform overflow-hidden relative group">
+                            <div class="absolute -right-4 -top-4 w-16 h-16 bg-blue-600 opacity-10 blur-xl rounded-full"></div>
+                            <div class="flex items-center space-x-3 overflow-hidden relative z-10">
+                                <div class="w-8 h-8 rounded-full bg-blue-900/50 border border-blue-700/50 flex items-center justify-center shrink-0 relative">
+                                    <span class="text-sm">🤖</span>
+                                    <span class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 border-2 border-[#0B1120] rounded-full animate-pulse"></span>
+                                </div>
+                                <div class="flex flex-col min-w-0">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-xs font-black text-white truncate tracking-wide">AI 盘后深度复盘</span>
+                                        <span class="text-[9px] text-blue-400 font-mono bg-blue-900/40 px-1.5 rounded">{{ dailyReportData.date }}</span>
+                                    </div>
+                                    <span class="text-[10px] text-gray-400 truncate mt-0.5 font-medium">{{ dailyReportData.summary }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div> 
+
                     <div v-for="task in activeRecurringQuadrantTasks" :key="task.id" 
                         class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm mb-2.5 overflow-hidden transition-all duration-300 ring-1 ring-gray-100/50 dark:ring-white/5 hover:shadow-md relative group">
                         
@@ -861,6 +989,24 @@
                         </div>
                     </div>
                     
+                    <div v-if="dailyReportData && !dailyReportData.hasNew" class="mt-6 mb-4 animate-fade-in relative z-10 opacity-70 grayscale-[0.5] hover:opacity-100 hover:grayscale-0 transition-all">
+                        <div @click="requestUnlock('report')" class="bg-[#0B1120]/80 rounded-2xl p-3 shadow-sm flex items-center justify-between border border-gray-800 cursor-pointer active:scale-95 transition-transform overflow-hidden relative">
+                            <div class="flex items-center space-x-3 overflow-hidden relative z-10">
+                                <div class="w-8 h-8 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center shrink-0">
+                                    <span class="text-sm opacity-50">🤖</span>
+                                </div>
+                                <div class="flex flex-col min-w-0">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-xs font-bold text-gray-400 truncate tracking-wide">研报已读归档</span>
+                                        <span class="text-[9px] text-gray-500 font-mono bg-gray-800 px-1.5 rounded">{{ dailyReportData.date }}</span>
+                                    </div>
+                                    <span class="text-[10px] text-gray-500 truncate mt-0.5">点击再次查阅详情</span>
+                                </div>
+                            </div>
+                            <div class="shrink-0 text-gray-600 ml-2 relative z-10 text-lg">›</div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -1394,7 +1540,8 @@
 </div>
     </div>
 
-    <div class="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex justify-around items-center p-1 pb-safe z-30 text-[10px] select-none">
+    <div class="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex justify-around items-center p-1 pb-safe z-30 text-[10px] select-none transition-colors duration-300"
+     :class="{'!bg-black !border-gray-900': currentTab === 'lab' && labSubTab === 'finance'}">
         <button @click="handleFocusTabClick" class="flex flex-col items-center p-2 w-1/4 rounded transition" :class="currentTab === 'now' ? 'text-blue-600 dark:text-blue-400 scale-105 font-bold' : 'text-gray-400'">
             <span class="text-xl mb-1">⚡</span><span>专注</span>
         </button>
@@ -1726,7 +1873,35 @@
                         </button>
                     </div>
                 </div>
-            </div>        
+            </div>  
+            
+    <div v-if="showReportDetail" 
+         class="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-5 animate-fade-in"
+         @click.self="showReportDetail = false">
+        
+        <div class="bg-[#0B1120] border border-gray-800 w-full max-w-md max-h-[85vh] rounded-3xl flex flex-col shadow-2xl animate-scale-up overflow-hidden">
+            <div class="flex justify-between items-center p-5 border-b border-gray-800 shrink-0">
+                <span class="text-sm font-bold text-blue-400 flex items-center">
+                    <span class="mr-2 text-lg">📡</span> 研报终端已解密
+                </span>
+                <button @click="showReportDetail = false" class="text-gray-500 hover:text-white text-3xl leading-none px-2 active:scale-90 transition-transform">&times;</button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto no-scrollbar flex-1 relative">
+                <div class="text-[13px] text-gray-300 leading-relaxed font-medium markdown-body" 
+                     v-html="dailyReportData.content.replace(/\n/g, '<br>')">
+                </div>
+            </div>
+            
+            <div class="p-5 border-t border-gray-800 shrink-0 bg-[#0B1120]">
+                <button @click="showReportDetail = false" 
+                        class="w-full bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border border-blue-500/30 py-3.5 rounded-xl font-bold active:scale-95 transition-all flex items-center justify-center">
+                    <span class="mr-2">✔️</span> 阅毕 / 关闭终端
+                </button>
+            </div>
+        </div>
+    </div>        
+
     <!-- 接入ai -->
     <div v-if="showAiConfigModal" 
         @click.self="showAiConfigModal = false" 
