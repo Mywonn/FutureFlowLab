@@ -472,7 +472,7 @@
                         </button>
                     </div>
 
-                    <div class="whitespace-nowrap overflow-x-auto pb-2 no-scrollbar min-h-[40px] w-full">
+                    <div class="flex flex-nowrap items-center overflow-x-auto pb-2 no-scrollbar min-h-[48px] w-full">
                         <div v-for="id in identities" :key="id.id" 
                             @click="activeIdentity = id; saveIdentities()"
                             @touchstart="startIdentityPress(id)"
@@ -484,31 +484,7 @@
                         </div>
                     </div>
                 </div>
-                <div v-if="showAddIdentityModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-                <div class="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-xs shadow-2xl animate-scale-up">
-                    <h3 class="text-lg font-black text-gray-800 dark:text-white mb-4">✨ 定义新身份</h3>
-                    <input v-model="newIdentityInput" placeholder="例如: 雅思8分选手" class="w-full bg-gray-100 dark:bg-gray-700 rounded-xl p-3 mb-4 outline-none font-bold" auto-focus>
-                    <div class="flex space-x-3">
-                        <button @click="showAddIdentityModal = false" class="flex-1 py-3 text-gray-500 font-bold">取消</button>
-                        <button @click="confirmAddIdentity" class="flex-1 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 dark:shadow-none">确认</button>
-                    </div>
-                </div>
-            </div>
-
-            <div v-if="showEditIdentityModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-                <div class="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-xs shadow-2xl animate-scale-up">
-                    <h3 class="text-lg font-black text-gray-800 dark:text-white mb-2">编辑身份</h3>
-                    <p class="text-xs text-gray-400 mb-4">修改名称或删除此身份</p>
-                    
-                    <input v-model="editIdentityInput" class="w-full bg-gray-100 dark:bg-gray-700 rounded-xl p-3 mb-4 outline-none font-bold text-center text-lg">
-                    
-                    <div class="space-y-3">
-                        <button @click="confirmEditIdentity" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">保存修改</button>
-                        <button @click="deleteIdentity" class="w-full bg-red-50 text-red-500 dark:bg-red-900/20 py-3 rounded-xl font-bold">删除身份</button>
-                        <button @click="showEditIdentityModal = false" class="w-full text-gray-400 py-2 font-bold text-xs">取消</button>
-                    </div>
-                </div>
-            </div>
+               
             </div>
 
             <div class="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-indigo-50 dark:border-indigo-900/20 animate-fade-in">
@@ -2099,8 +2075,36 @@
             </div>
         </div>
     </div>
+     <div v-if="showAddIdentityModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+                <div class="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-xs shadow-2xl animate-scale-up">
+                    <h3 class="text-lg font-black text-gray-800 dark:text-white mb-4">✨ 定义新身份</h3>
+                    <input v-model="newIdentityInput" placeholder="例如: 雅思8分选手" class="w-full bg-gray-100 dark:bg-gray-700 rounded-xl p-3 mb-4 outline-none font-bold" auto-focus>
+                    <div class="flex space-x-3">
+                        <button @click="showAddIdentityModal = false" class="flex-1 py-3 text-gray-500 font-bold">取消</button>
+                        <button @click="confirmAddIdentity" class="flex-1 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 dark:shadow-none">确认</button>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="showEditIdentityModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+                <div class="bg-white dark:bg-gray-800 rounded-3xl p-6 w-full max-w-xs shadow-2xl animate-scale-up">
+                    <h3 class="text-lg font-black text-gray-800 dark:text-white mb-2">编辑身份</h3>
+                    <p class="text-xs text-gray-400 mb-4">修改名称或删除此身份</p>
+                    
+                    <input v-model="editIdentityInput" class="w-full bg-gray-100 dark:bg-gray-700 rounded-xl p-3 mb-4 outline-none font-bold text-center text-lg">
+                    
+                    <div class="space-y-3">
+                        <button @click="confirmEditIdentity" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">保存修改</button>
+                        <button @click="deleteIdentity" class="w-full bg-red-50 text-red-500 dark:bg-red-900/20 py-3 rounded-xl font-bold">删除身份</button>
+                        <button @click="showEditIdentityModal = false" class="w-full text-gray-400 py-2 font-bold text-xs">取消</button>
+                    </div>
+                </div>
+            </div>
 </div>
 <script type="module" src="js/app.js"></script>
+
+
+
 </body>
 </html>
 
