@@ -78,16 +78,22 @@ export const EXTRACT_PROMPT = `
 
 export function useLab() {
     const identities = ref(JSON.parse(localStorage.getItem('ff_custom_identities')) || []);
-    const activeIdentity = ref(identities.value[0] || null);
+    
+    // ✨ 核心修复：读取你上次离开时选中的身份 ID
+    const savedActiveId = localStorage.getItem('ff_active_identity_id');
+    const activeIdentity = ref(savedActiveId ? (identities.value.find(i => i.id === savedActiveId) || identities.value[0] || null) : (identities.value[0] || null));
     
     // 👇 状态升级：'flash' | 'strategy' | 'extract'
     const labMode = ref('flash');
-
-    // 👇 新增：顶层双模式切换 ('awake' = 觉醒实验室, 'finance' = 金融交易)
+    
     const labSubTab = ref('awake');
 
     const saveIdentities = () => {
         localStorage.setItem('ff_custom_identities', JSON.stringify(identities.value));
+        // ✨ 同步保存当前选中的身份 ID
+        if (activeIdentity.value) {
+            localStorage.setItem('ff_active_identity_id', activeIdentity.value.id);
+        }
     };
 
     
