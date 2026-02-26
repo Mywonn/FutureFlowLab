@@ -453,9 +453,9 @@
                 </div>
             </div>
             
-            <div v-show="labSubTab === 'awake'" class="animate-fade-in space-y-6 px-4 flex-1 overflow-y-auto no-scrollbar">
+            <div v-show="labSubTab === 'awake'" class="animate-fade-in flex flex-col gap-4 pt-2 px-4 flex-1 overflow-y-auto no-scrollbar">
 
-            <div class="bg-indigo-600 dark:bg-indigo-900 rounded-3xl p-6 text-white mb-6 relative overflow-hidden shadow-lg shadow-indigo-200 dark:shadow-none animate-fade-in">
+            <div class="bg-indigo-600 dark:bg-indigo-900 rounded-3xl p-6 text-white relative overflow-hidden shadow-lg shadow-indigo-200 dark:shadow-none animate-fade-in">
                 <div class="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 bg-white opacity-10 rounded-full blur-2xl"></div>
                 
                 <div class="relative z-10">
@@ -677,106 +677,144 @@
             </div>
 
             </div> 
-            <div v-if="labSubTab === 'finance'" class="animate-fade-in pb-32 flex-1 overflow-y-auto no-scrollbar px-4 bg-black">
-                <div class="space-y-4 text-gray-300 relative pt-4">
-                    
+            <div v-show="labSubTab === 'finance'" 
+                class="animate-fade-in pb-32 flex-1 overflow-y-auto overflow-x-hidden no-scrollbar px-4 bg-black"
+                style="touch-action: pan-y;">
+                
+                
+
+                <div class="space-y-4 text-gray-300 relative overflow-hidden">
                     <div class="absolute -top-10 -right-10 w-40 h-40 bg-blue-600 opacity-20 blur-[50px] rounded-full pointer-events-none"></div>
-                    
-                    <div class="flex justify-between items-center mb-6 relative z-10">
-                        <div>
-                            <h3 class="text-lg font-black text-white tracking-wide">宏观监控</h3>
-                            <p class="text-[9px] text-gray-500 uppercase font-mono mt-1">Live Global Macro</p>
-                        </div>
-                        <span class="text-[9px] bg-blue-900/40 text-blue-400 px-2.5 py-1 rounded border border-blue-800/50 font-bold tracking-widest">BETA</span>
-                    </div>
 
-                    <div v-if="isMacroLoading" class="py-12 flex flex-col items-center justify-center space-y-3 opacity-50">
-                        <div class="w-8 h-8 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
-                        <span class="text-xs font-bold text-gray-400">正在接入全球金融数据库...</span>
-                    </div>
-
-                    <div v-else-if="macroData" class="grid grid-cols-2 gap-3 mb-6 relative z-10">
-                        <div v-for="(asset, key) in macroData.assets" :key="key" 
-                             class="bg-[#151E32]/80 backdrop-blur-sm rounded-2xl p-3 border border-gray-700/50 flex flex-col hover:border-blue-500/30 transition-colors">
-                            <span class="text-[9px] text-gray-500 font-bold mb-1">{{ getAssetName(key) }}</span>
-                            <div class="flex items-baseline space-x-2">
-                                <span class="text-lg font-black text-white">{{ asset.current }}</span>
-                                <span class="text-[9px] font-bold" :class="asset.change_pct >= 0 ? 'text-green-400 drop-shadow-[0_0_3px_rgba(74,222,128,0.5)]' : 'text-red-400 drop-shadow-[0_0_3px_rgba(239,68,68,0.5)]'">
-                                    {{ asset.change_pct >= 0 ? '+' : '' }}{{ asset.change_pct }}%
-                                </span>
+                    <div v-show="financeMode === 'macro'" class="animate-fade-in">
+                        <div v-if="isMacroLoading" class="py-24 flex flex-col items-center justify-center space-y-5">
+                            <div class="relative w-16 h-16 flex items-center justify-center">
+                                <div class="absolute inset-0 border-4 border-gray-800 rounded-full"></div>
+                                <div class="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
+                                <span class="text-2xl animate-pulse">📡</span>
                             </div>
-                            <div :id="'chart-' + key" class="w-full h-10 mt-1"></div>
+                            <div class="flex flex-col items-center space-y-1">
+                                <span class="text-sm font-black text-blue-400 tracking-widest uppercase animate-pulse">Connecting...</span>
+                                <span class="text-[10px] text-gray-500 font-medium">正在接入全球宏观数据节点，请稍候</span>
+                            </div>
+                        </div>
+
+                        <div v-else-if="macroData" class="grid grid-cols-2 gap-3 mb-6 relative z-10">
+                            <div v-for="(asset, key) in macroData.assets" :key="key" 
+                                @click="openMacroDetail(key, asset)"
+                                class="bg-[#151E32]/80 backdrop-blur-sm rounded-2xl p-3 border border-gray-700/50 flex flex-col hover:border-blue-500/50 hover:bg-[#1A2640] transition-all cursor-pointer active:scale-95 shadow-sm">
+                                <span class="text-[11px] text-gray-400 font-bold mb-1">{{ getAssetName(key) }}</span>
+                                <div class="flex items-baseline space-x-2">
+                                    <span class="text-lg font-black text-white">{{ asset.current }}</span>
+                                    <span class="text-[11px] font-bold" :class="asset.change_pct >= 0 ? 'text-green-400 shadow-green-500/20' : 'text-red-400 shadow-red-500/20'">
+                                        {{ asset.change_pct >= 0 ? '+' : '' }}{{ asset.change_pct }}%
+                                    </span>
+                                </div>
+                                <div :id="'chart-' + key" class="w-full h-10 mt-1"></div>
+                            </div>
+                        </div>
+
+                        <div v-if="macroData && macroData.mentor_insight" class="relative z-10 bg-blue-900/20 border border-blue-800/50 rounded-2xl p-4 mb-6">
+                            <h4 class="text-xs font-bold mb-2 flex items-center" :class="{'text-red-400': macroData.mentor_insight.type === 'risk', 'text-green-400': macroData.mentor_insight.type === 'opportunity', 'text-blue-400': macroData.mentor_insight.type === 'neutral'}">
+                                <span class="mr-1 text-base">💬</span> AI 导师点评：{{ macroData.mentor_insight.title }}
+                            </h4>
+                            <p class="text-[11px] text-gray-300 leading-relaxed font-medium">{{ macroData.mentor_insight.content }}</p>
                         </div>
                     </div>
 
-                    <div v-if="macroData && macroData.mentor_insight" class="relative z-10 bg-blue-900/20 border border-blue-800/50 rounded-2xl p-4 mb-6">
-                        <h4 class="text-xs font-bold mb-2 flex items-center" :class="{'text-red-400': macroData.mentor_insight.type === 'risk', 'text-green-400': macroData.mentor_insight.type === 'opportunity', 'text-blue-400': macroData.mentor_insight.type === 'neutral'}">
-                            <span class="mr-1 text-base">💬</span> AI 导师点评：{{ macroData.mentor_insight.title }}
-                        </h4>
-                        <p class="text-[11px] text-gray-300 leading-relaxed font-medium">{{ macroData.mentor_insight.content }}</p>
-                    </div>
+                    <div v-show="financeMode === 'stock'" class="animate-fade-in">
+                        <div class="flex items-center bg-[#151E32] rounded-2xl p-1.5 border border-gray-700/50 focus-within:border-blue-500/50 transition-colors relative z-10 shadow-inner mb-4">
+                            <span class="pl-3 text-gray-500 text-lg">🔍</span>
+                            <input v-model="searchTicker" @keyup.enter="analyzeStock" type="text" placeholder="输入代码 (如 NVDA/BTC-USD)..." class="bg-transparent flex-1 px-3 py-2 text-sm outline-none text-white placeholder-gray-600 font-mono font-bold uppercase">
+                            <button @click="analyzeStock" :disabled="isStockLoading" class="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 text-white px-5 py-2 rounded-xl text-xs font-black transition active:scale-95">
+                                {{ isStockLoading ? '扫描' : '解析' }}
+                            </button>
+                        </div>
 
-                    <div class="flex items-center bg-[#151E32] rounded-2xl p-1.5 border border-gray-700/50 focus-within:border-blue-500/50 transition-colors relative z-10 shadow-inner mt-4">
-                        <span class="pl-3 text-gray-500 text-lg">🔍</span>
-                        <input v-model="searchTicker" @keyup.enter="analyzeStock" type="text" placeholder="输入代码 (如 NVDA/BTC-USD)..." class="bg-transparent flex-1 px-3 py-2 text-sm outline-none text-white placeholder-gray-600 font-mono font-bold uppercase">
-                        <button @click="analyzeStock" :disabled="isStockLoading" class="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-600 text-white px-5 py-2 rounded-xl text-xs font-black transition active:scale-95">
-                            {{ isStockLoading ? '扫描中...' : '解析' }}
+                        <div v-if="stockData" class="bg-[#151E32]/80 backdrop-blur-sm rounded-2xl p-4 border border-gray-700/50 relative z-10 animate-fade-in">
+                            <div class="flex justify-between items-center border-b border-gray-700/50 pb-3 mb-3">
+                                <div>
+                                    <h4 class="text-xl font-black text-white">{{ stockData.ticker }}</h4>
+                                    <div class="flex items-center space-x-2 mt-1">
+                                        <span class="text-lg font-bold text-gray-200">${{ stockData.price }}</span>
+                                    </div>
+                                </div>
+                                <div class="text-right flex flex-col items-end">
+                                    <span class="text-[9px] text-gray-500 font-bold mb-1 tracking-widest uppercase">RSI (强弱)</span>
+                                    <div class="text-xl font-black" :class="stockData.indicators.rsi > 70 ? 'text-red-400' : (stockData.indicators.rsi < 30 ? 'text-green-400' : 'text-gray-300')">
+                                        {{ stockData.indicators.rsi.toFixed(1) }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3 mb-4">
+                                <div class="bg-[#0B1120] rounded-xl p-3 border border-gray-800">
+                                    <span class="text-[9px] text-gray-500 font-bold block mb-1">ALPHA (超额率)</span>
+                                    <span class="text-sm font-black" :class="stockData.indicators.alpha > 0 ? 'text-green-400' : 'text-red-400'">
+                                        {{ stockData.indicators.alpha > 0 ? '+' : '' }}{{ stockData.indicators.alpha.toFixed(2) }}%
+                                    </span>
+                                </div>
+                                <div class="bg-[#0B1120] rounded-xl p-3 border border-gray-800">
+                                    <span class="text-[9px] text-gray-500 font-bold block mb-1">PEG (估值倍数)</span>
+                                    <span class="text-sm font-black text-gray-300">{{ stockData.indicators.peg ? stockData.indicators.peg.toFixed(2) : 'N/A' }}</span>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <div id="stock-chart" class="w-full h-12 bg-[#0B1120] rounded-lg border border-gray-800/50"></div>
+                            </div>
+
+                            <div class="bg-blue-900/20 border border-blue-800/50 rounded-xl p-3 relative overflow-hidden">
+                                <span class="text-[10px] text-blue-400 font-bold block mb-2 flex items-center"><span class="mr-1">⚡</span> 智脑战略诊断</span>
+                                <p class="text-xs text-gray-300 leading-relaxed font-medium">{{ stockAiInsight }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="fixed bottom-[85px] left-0 w-full flex justify-center z-40 pointer-events-none mb-0">
+                    <div class="inline-flex items-center bg-gray-200/60 dark:bg-gray-800/90 backdrop-blur-md p-1 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.6)] border border-gray-100 dark:border-gray-700 pointer-events-auto">
+                        <button @click="financeMode = 'macro'"
+                                :class="financeMode === 'macro' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
+                                class="px-8 py-1.5 rounded-xl text-sm font-black tracking-widest transition-all relative">
+                            宏观全景
+                            <span class="absolute -top-1 -right-2 text-[7px] scale-75 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 px-1 rounded border border-blue-200 dark:border-blue-800/50">BETA</span>
+                        </button>
+                        <button @click="financeMode = 'stock'" 
+                                :class="financeMode === 'stock' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
+                                class="px-8 py-1.5 rounded-xl text-sm font-black tracking-widest transition-all">
+                            个股侦测
                         </button>
                     </div>
-
-                    <div v-if="stockData" class="mt-4 bg-[#151E32]/80 backdrop-blur-sm rounded-2xl p-4 border border-gray-700/50 relative z-10 animate-fade-in">
-                        
-                        <div class="flex justify-between items-center border-b border-gray-700/50 pb-3 mb-3">
-                            <div>
-                                <h4 class="text-xl font-black text-white">{{ stockData.ticker }}</h4>
-                                <div class="flex items-center space-x-2 mt-1">
-                                    <span class="text-lg font-bold text-gray-200">${{ stockData.price }}</span>
-                                </div>
-                            </div>
-                            <div class="text-right flex flex-col items-end">
-                                <span class="text-[9px] text-gray-500 font-bold mb-1 tracking-widest uppercase">RSI (强弱)</span>
-                                <div class="text-xl font-black" :class="stockData.indicators.rsi > 70 ? 'text-red-400' : (stockData.indicators.rsi < 30 ? 'text-green-400' : 'text-gray-300')">
-                                    {{ stockData.indicators.rsi.toFixed(1) }}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3 mb-4">
-                            <div class="bg-[#0B1120] rounded-xl p-3 border border-gray-800">
-                                <span class="text-[9px] text-gray-500 font-bold block mb-1">ALPHA (超额率)</span>
-                                <span class="text-sm font-black" :class="stockData.indicators.alpha > 0 ? 'text-green-400' : 'text-red-400'">
-                                    {{ stockData.indicators.alpha > 0 ? '+' : '' }}{{ stockData.indicators.alpha.toFixed(2) }}%
-                                </span>
-                            </div>
-                            <div class="bg-[#0B1120] rounded-xl p-3 border border-gray-800">
-                                <span class="text-[9px] text-gray-500 font-bold block mb-1">PEG (估值倍数)</span>
-                                <span class="text-sm font-black text-gray-300">
-                                    {{ stockData.indicators.peg ? stockData.indicators.peg.toFixed(2) : 'N/A' }}
-                                </span>
-                            </div>
-                        </div>
-
-                        <div class="mb-4">
-                             <div class="flex justify-between items-end mb-1">
-                                 <span class="text-[9px] text-gray-500 font-bold block">近 30 天走势轨迹</span>
-                             </div>
-                             <div id="stock-chart" class="w-full h-12 bg-[#0B1120] rounded-lg border border-gray-800/50"></div>
-                        </div>
-
-                        <div class="bg-blue-900/20 border border-blue-800/50 rounded-xl p-3 relative overflow-hidden">
-                             <div class="absolute -right-2 -top-2 text-4xl opacity-10">🤖</div>
-                             <span class="text-[10px] text-blue-400 font-bold block mb-2 flex items-center">
-                                 <span class="mr-1">⚡</span> 智脑战略诊断
-                             </span>
-                             <p class="text-xs text-gray-300 leading-relaxed font-medium">
-                                 {{ stockAiInsight }}
-                             </p>
-                        </div>
-                    </div>
-
                 </div>
             </div>
 
+        </div>
+
+        <div v-if="showMacroModal" class="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-5 animate-fade-in" @click.self="showMacroModal = false">
+            <div class="bg-[#0B1120] border border-gray-700/50 w-full max-w-md rounded-3xl flex flex-col shadow-2xl animate-scale-up overflow-hidden">
+                <div class="flex justify-between items-start p-5 border-b border-gray-800 shrink-0 bg-[#151E32]/40">
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-400 mb-1 flex items-center">
+                            <span class="mr-1">📊</span> {{ getAssetName(currentMacroAssetKey) }}
+                        </h3>
+                        <div class="flex items-baseline space-x-2">
+                            <span class="text-3xl font-black text-white">{{ currentMacroAssetData.current }}</span>
+                            <span class="text-sm font-bold" :class="currentMacroAssetData.change_pct >= 0 ? 'text-green-400' : 'text-red-400'">
+                                {{ currentMacroAssetData.change_pct >= 0 ? '+' : '' }}{{ currentMacroAssetData.change_pct }}%
+                            </span>
+                        </div>
+                    </div>
+                    <button @click="showMacroModal = false" class="text-gray-500 hover:text-white w-8 h-8 flex items-center justify-center text-2xl bg-gray-800/50 rounded-full active:scale-90 transition-transform pb-1">&times;</button>
+                </div>
+                
+                <div class="p-4 w-full bg-[#0B1120]">
+                    <div id="macro-detail-chart" class="w-full h-64"></div>
+                </div>
+                
+                <div class="p-3 text-center border-t border-gray-800 bg-[#0B1120]">
+                    <span class="text-[10px] text-gray-500 font-mono tracking-widest uppercase">长按或滑动图表查看每日明细</span>
+                </div>
+            </div>
         </div>
 
      <div v-if="currentTab === 'now'" class="h-full flex flex-col relative">
@@ -989,8 +1027,8 @@
                         </div>
                     </div>
                     
-                    <div v-if="dailyReportData && !dailyReportData.hasNew" class="mt-6 mb-4 animate-fade-in relative z-10 opacity-70 grayscale-[0.5] hover:opacity-100 hover:grayscale-0 transition-all">
-                        <div @click="requestUnlock('report')" class="bg-[#0B1120]/80 rounded-2xl p-3 shadow-sm flex items-center justify-between border border-gray-800 cursor-pointer active:scale-95 transition-transform overflow-hidden relative">
+                    <div v-if="archivedReports.length > 0" class="mt-6 mb-4 animate-fade-in relative z-10 opacity-70 grayscale-[0.5] hover:opacity-100 hover:grayscale-0 transition-all">
+                        <div @click="requestUnlock('archive')" class="bg-[#0B1120]/80 rounded-2xl p-3 shadow-sm flex items-center justify-between border border-gray-800 cursor-pointer active:scale-95 transition-transform overflow-hidden relative">
                             <div class="flex items-center space-x-3 overflow-hidden relative z-10">
                                 <div class="w-8 h-8 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center shrink-0">
                                     <span class="text-sm opacity-50">🤖</span>
@@ -998,9 +1036,9 @@
                                 <div class="flex flex-col min-w-0">
                                     <div class="flex items-center space-x-2">
                                         <span class="text-xs font-bold text-gray-400 truncate tracking-wide">研报已读归档</span>
-                                        <span class="text-[9px] text-gray-500 font-mono bg-gray-800 px-1.5 rounded">{{ dailyReportData.date }}</span>
+                                        <span class="text-[9px] text-gray-500 font-mono bg-gray-800 px-1.5 rounded">{{ archivedReports.length }} 篇</span>
                                     </div>
-                                    <span class="text-[10px] text-gray-500 truncate mt-0.5">点击再次查阅详情</span>
+                                    <span class="text-[10px] text-gray-500 truncate mt-0.5">点击查看历史研报库</span>
                                 </div>
                             </div>
                             <div class="shrink-0 text-gray-600 ml-2 relative z-10 text-lg">›</div>
@@ -1889,7 +1927,7 @@
             
             <div class="p-6 overflow-y-auto no-scrollbar flex-1 relative">
                 <div class="text-[13px] text-gray-300 leading-relaxed font-medium markdown-body" 
-                     v-html="dailyReportData.content.replace(/\n/g, '<br>')">
+                     v-html="currentViewReport ? currentViewReport.content.replace(/\n/g, '<br>') : ''">
                 </div>
             </div>
             
@@ -1901,6 +1939,27 @@
             </div>
         </div>
     </div>        
+
+    <div v-if="showReportArchiveModal" class="fixed inset-0 z-[150] bg-black/50 backdrop-blur-sm flex justify-end" @click.self="showReportArchiveModal=false">
+        <div class="w-3/4 max-w-sm h-full bg-[#0B1120] border-l border-gray-800 px-4 pb-6 pt-16 overflow-y-auto animate-slide-left shadow-2xl">
+            <div class="flex justify-between items-center mb-6 px-2">
+                <h3 class="font-bold text-lg text-white">🗄️ 研报档案室</h3>
+                <button @click="showReportArchiveModal=false" class="text-2xl text-gray-500 hover:text-white transition-colors">×</button>
+            </div>
+            
+            <div class="space-y-3">
+                <div v-for="report in archivedReports" :key="report.id" 
+                     @click="viewArchivedReport(report)"
+                     class="bg-gray-800/30 border border-gray-700/50 p-3 rounded-xl cursor-pointer hover:bg-gray-800/80 active:scale-95 transition-all">
+                    <div class="flex justify-between items-start mb-1.5">
+                        <span class="text-xs font-bold text-blue-400 truncate">{{ report.summary || 'AI 深度复盘' }}</span>
+                        <span class="text-[9px] text-gray-500 font-mono shrink-0">{{ report.date }}</span>
+                    </div>
+                    <div class="text-[10px] text-gray-400 line-clamp-2 leading-relaxed">{{ report.content }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- 接入ai -->
     <div v-if="showAiConfigModal" 
