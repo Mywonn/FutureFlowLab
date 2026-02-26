@@ -12,7 +12,7 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
 
             const { 
                 identities, activeIdentity, web3Project, saveIdentities,
-                labMode, FLASH_PROMPT, STRATEGY_PROMPT, EXTRACT_PROMPT,
+                labMode, labSubTab, FLASH_PROMPT, STRATEGY_PROMPT, EXTRACT_PROMPT, // <-- 加上 labSubTab
                 labHistory, addToHistory, deleteHistory, restoreHistory
             } = useLab();
 
@@ -76,6 +76,7 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
 
                 const savedToken = localStorage.getItem('mike_github_token');
                 if(savedToken) githubToken.value = savedToken;
+                if(savedToken && savedToken.startsWith('ghp_')) isFinanceUnlocked.value = true;
                 const savedGistId = localStorage.getItem('mike_gist_id');
                 if(savedGistId) gistId.value = savedGistId;
                 
@@ -131,6 +132,245 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                         setTimeout(() => splash.remove(), 500);
                     }
                 }, 100); // 稍微延迟 100ms 确保页面完全渲染
+            });
+
+            // ==========================================
+            // 🔒 隐式安全锁 (基于 GitHub Token 鉴权) & 每日复盘状态
+            // ==========================================
+            const isFinanceUnlocked = ref(false); // 当前会话是否已放行
+            
+            // 模拟的云端复盘数据 -> 改为真实状态
+            const dailyReportData = ref(null); // 默认不显示，等拉到真实数据再弹出来
+            const showReportDetail = ref(false); 
+
+            // 📡 自动去 Gist 拉取真实的每日复盘数据
+            const fetchDailyReportFromGist = async () => {
+                const token = localStorage.getItem('mike_github_token');
+                const gistId = localStorage.getItem('ff_sync_gist_id') || '43ce1dbefe4848d94079780153afeca2'; // ⚠️ 注意替换真实的 Gist ID
+                
+                if (!token || !gistId) return;
+
+                try {
+                    const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
+                    });
+                    
+                    if (!res.ok) throw new Error('拉取 Gist 失败');
+                    const data = await res.json();
+                    
+                    if (data.files && data.files['ff_finance_report.json']) {
+                        const reportJson = JSON.parse(data.files['ff_finance_report.json'].content);
+                        
+                        const todayStr = new Date().toLocaleDateString('zh-CN', {month:'2-digit', day:'2-digit'}).replace('/', '-');
+                        const lastReadDate = localStorage.getItem('ff_report_read_date'); // 读取本地的已读记录
+                        
+                        // 逻辑：必须是当天的报告，且【今天还没标记过已读】，才显示红点并置顶
+                        reportJson.hasNew = (reportJson.date === todayStr) && (lastReadDate !== todayStr); 
+                        
+                        dailyReportData.value = reportJson;
+                    }
+                } catch (error) {
+                    console.error("❌ 获取复盘数据失败:", error);
+                }
+            };
+
+            // 在 Vue 启动时，自动拉取一次数据
+            onMounted(() => {
+                fetchDailyReportFromGist();
+            });
+
+            const requestUnlock = (target) => {
+                // 1. 如果已经配置了 Token，就直接放行
+                const savedToken = localStorage.getItem('mike_github_token');
+                
+                if (savedToken && savedToken.startsWith('ghp_')) {
+                    isFinanceUnlocked.value = true;
+                    executeUnlockTarget(target);
+                } else {
+                    // 2. 只有彻底没 Token 才会弹窗
+                    alert("🔒 访问受限：检测到未绑定主理人终端。");
+                    showSyncModal.value = true; 
+                }
+            };
+
+            const executeUnlockTarget = (target) => {
+                if (target === 'finance') {
+                    labSubTab.value = 'finance';
+                } else if (target === 'report') {
+                    showReportDetail.value = true;
+                    // 当用户打开报告时，标记为已读并沉底
+                    if (dailyReportData.value && dailyReportData.value.hasNew) {
+                        dailyReportData.value.hasNew = false; 
+                        
+                        // 记录今天已经读过，刷新页面也不会再跳回去了
+                        const todayStr = new Date().toLocaleDateString('zh-CN', {month:'2-digit', day:'2-digit'}).replace('/', '-');
+                        localStorage.setItem('ff_report_read_date', todayStr);
+                    }
+                }
+            };
+            
+
+            // ==========================================
+            // 📈 金融交易模块核心逻辑 (大盘 + 个股)
+            // ==========================================
+            const macroData = ref(null);
+            const isMacroLoading = ref(false);
+
+            const getAssetName = (key) => {
+                const map = { us10y: '10年美债 (锚)', dxy: '美元指数 (水)', gold: '黄金 (避险)', spx: '标普500 (基石)', ndx: '纳斯达克 (矛)', btc: '比特币 (鸟)' };
+                return map[key] || key.toUpperCase();
+            };
+
+            const fetchMacroData = async () => {
+                if (macroData.value) return; 
+                isMacroLoading.value = true;
+                try {
+                    const res = await fetch('https://ff-api.zeabur.app/api/macro');
+                    if (!res.ok) throw new Error('网络响应错误');
+                    macroData.value = await res.json();
+                    nextTick(() => drawSparklines(macroData.value.assets));
+                } catch (error) {
+                    console.error("获取宏观数据失败:", error);
+                } finally {
+                    isMacroLoading.value = false;
+                }
+            };
+
+            const drawSparklines = (assets) => {
+                Object.keys(assets).forEach(key => {
+                    const dom = document.getElementById(`chart-${key}`);
+                    // ✅ 确保使用 window.echarts
+                    if (dom && window.echarts) {
+                        const chart = window.echarts.getInstanceByDom(dom) || window.echarts.init(dom);
+                        const lineData = assets[key].sparkline;
+                        const isUp = assets[key].change_pct >= 0;
+                        const color = isUp ? '#10b981' : '#ef4444';
+                        chart.setOption({
+                            grid: { top: 5, bottom: 5, left: 0, right: 0 },
+                            xAxis: { type: 'category', show: false },
+                            yAxis: { type: 'value', show: false, min: 'dataMin', max: 'dataMax' },
+                            series: [{
+                                data: lineData, type: 'line', smooth: true, showSymbol: false,
+                                lineStyle: { color: color, width: 2 },
+                                // ✅ 关键修复：这里必须加上 window.
+                                areaStyle: { color: new window.echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: color + '40' }, { offset: 1, color: color + '00' }]) }
+                            }]
+                        });
+                    }
+                });
+            };
+
+            // 🎯 个股查询逻辑
+            const searchTicker = ref('');
+            const stockData = ref(null);
+            const isStockLoading = ref(false);
+            const stockAiInsight = ref('');
+
+            // ✨ 新增：独立的个股画图函数，方便随时调用
+            const drawStockChart = () => {
+                if (!stockData.value) return;
+                const dom = document.getElementById('stock-chart');
+                if (dom && window.echarts) {
+                    // 核心修复：如果 DOM 是重新生成的，必须先销毁旧实例，否则 ECharts 会卡死画不出来
+                    const existingChart = window.echarts.getInstanceByDom(dom);
+                    if (existingChart) existingChart.dispose();
+                    
+                    const chart = window.echarts.init(dom);
+                    const history = stockData.value.history;
+                    const isUp = history[history.length-1] >= history[0];
+                    const color = isUp ? '#10b981' : '#ef4444';
+                    chart.setOption({
+                        grid: { top: 5, bottom: 5, left: 0, right: 0 },
+                        xAxis: { type: 'category', show: false },
+                        yAxis: { type: 'value', show: false, min: 'dataMin', max: 'dataMax' },
+                        series: [{
+                            data: history, type: 'line', smooth: true, showSymbol: false,
+                            lineStyle: { color: color, width: 2 },
+                            areaStyle: { color: new window.echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: color + '40' }, { offset: 1, color: color + '00' }]) }
+                        }]
+                    });
+                }
+            };
+
+            const analyzeStock = async () => {
+                if (!searchTicker.value.trim()) return;
+                isStockLoading.value = true;
+                stockData.value = null;
+                stockAiInsight.value = '';
+                
+                try {
+                    const res = await fetch(`https://ff-api.zeabur.app/api/stock/${searchTicker.value.trim()}`);
+                    if (!res.ok) throw new Error('未找到该股票代码，或者该股票数据暂缺');
+                    const data = await res.json();
+                    stockData.value = data;
+
+                    // 数据回来后立刻画图
+                    nextTick(() => drawStockChart());
+
+                    // 呼叫本地配置好的 AI 生成解读
+                    generateStockAiInsight(data);
+                } catch (e) {
+                    alert(e.message);
+                } finally {
+                    isStockLoading.value = false;
+                }
+            };
+
+                  
+
+            const generateStockAiInsight = async (data) => {
+                if (!aiConfig.key) {
+                    stockAiInsight.value = "⚠️ 请先在右上角⚙️配置 AI 密钥，以获取智能诊断。";
+                    return;
+                }
+                stockAiInsight.value = "🤖 智脑正在深度解析各项指标，请稍候...";
+                try {
+                    const prompt = `你是华尔街顶级交易员。请根据以下个股数据，用一段话给出客观的诊断结论（必须包含明确的操作建议：买入/观望/卖出）。语气要极客、专业、冰冷。
+                        代码: ${data.ticker}, 最新价: ${data.price}
+                        Alpha超额收益: ${data.indicators.alpha}%
+                        RSI情绪: ${data.indicators.rsi} (超70超买，低于30超卖)
+                        PEG估值: ${data.indicators.peg || 'N/A'} (低于1低估)
+                        综合评分: 价值${data.scores.Value}, 成长${data.scores.Growth}, 质量${data.scores.Quality}, 财务${data.scores.Financial}, 动能${data.scores.Momentum}`;
+
+                    const GEMINI_PROXY = 'https://futureflowlab.mzdesx.workers.dev';
+                    let rawText = "";
+
+                    if (aiConfig.model === 'deepseek-chat') {
+                        const response = await fetch("https://api.deepseek.com/chat/completions", {
+                            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${aiConfig.key}` },
+                            body: JSON.stringify({ model: "deepseek-chat", messages: [{ role: "user", content: prompt }] })
+                        });
+                        const resData = await response.json();
+                        rawText = resData.choices[0].message.content;
+                    } else {
+                        const response = await fetch(`${GEMINI_PROXY}/v1beta/models/${aiConfig.model}:generateContent?key=${aiConfig.key}`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                        });
+                        const resData = await response.json();
+                        rawText = resData.candidates[0].content.parts[0].text;
+                    }
+                    stockAiInsight.value = rawText;
+                } catch(e) {
+                    stockAiInsight.value = "❌ AI 诊断请求超时或失败。";
+                }
+            };
+
+            // ✅ 修复折线图消失问题：内部面板切换时重绘
+            watch(labSubTab, (newVal) => {
+                if (newVal === 'finance') {
+                    if (macroData.value) {
+                        nextTick(() => drawSparklines(macroData.value.assets));
+                        if (stockData.value) {
+                             nextTick(() => drawStockChart()); // 使用新函数
+                        }
+                    } else {
+                        fetchMacroData();
+                    }
+                }
             });
 
             // --- 原有逻辑 ---
@@ -318,26 +558,36 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
 
             // --- 监听Tab切换 ---
             watch(currentTab, (newTab, oldTab) => {
-                // ✅ 新增：切换 Tab 时，强制关闭所有倒数日的“左滑删除”状态
                 swipeItemId.value = null;
                 
-                // 🚀 核心修改：在 ['now', 'quadrant'] 后面加上 'lab'
                 if (['now', 'quadrant', 'lab'].includes(newTab)) {
-                    showCalendar.value = false; // 进入这些页面时，默认收起日历
+                    showCalendar.value = false;
                 } else {
-                    showCalendar.value = true; // 进度和倒数日页面默认展开
+                    showCalendar.value = true; 
                 }
 
-                // ✅ 修改 2：不论从“专注页”还是“四象限”离开，都自动收起所有任务
                 if (oldTab === 'now' || oldTab === 'quadrant') {
-                    tasks.value.forEach(t => {
-                        t.expanded = false; 
-                    });
+                    tasks.value.forEach(t => { t.expanded = false; });
                 }
                 
-                // 3. 额外优化：如果切回 [专注] 或 [四象限]，自动重置回今天
                 if (newTab === 'now' || newTab === 'quadrant') {
                     jumpToToday(); 
+                }
+
+                // 👇 🌟 核心修复在这里：如果切回了实验室，并且当前停留在交易面板，强制重绘！
+                if (newTab === 'lab' && labSubTab.value === 'finance') {
+                    nextTick(() => {
+                        // 1. 恢复宏观走势图
+                        if (macroData.value && macroData.value.assets) {
+                            drawSparklines(macroData.value.assets);
+                        } else {
+                            fetchMacroData(); // 没数据就重新拉
+                        }
+                        // 2. 恢复个股走势图
+                        if (stockData.value) {
+                            drawStockChart();
+                        }
+                    });
                 }
             });
 
@@ -2098,7 +2348,7 @@ const handleSync = async (direction) => {
             tasks.value.unshift({
                 id: Date.now(),
                 text: isExtract ? `💡 ${mainText}` : `⚡ ${mainText}`,
-                q: isExtract ? 2 : 1, // 💡 萃取放入 Inbox(Q2)，⚡ 闪电放入 Q1
+                q: isExtract ? 0 : 1, // 💡 萃取放入 Inbox(Q0)，⚡ 闪电放入 Q1
                 done: false,
                 date: dateKey, // 🐛 核心修复 3：补全 date 字段，不再离奇失踪
                 duration: 0.5,
@@ -2218,7 +2468,7 @@ const handleSync = async (direction) => {
         isDark, 
         toggleTheme,
         identities, activeIdentity, web3Project, saveIdentities,
-        showHistoryModal,
+        showHistoryModal,isFinanceUnlocked, requestUnlock, dailyReportData, showReportDetail, macroData, isMacroLoading, getAssetName, searchTicker, stockData, isStockLoading, stockAiInsight, analyzeStock,
         currentTab, showProgressFloatBtn,showCalendar, toggleCalendar: () => showCalendar.value = !showCalendar.value,
         stripDays, handleHeaderTouchStart, handleHeaderTouchEnd,
         dateScrollContainer, touchStart, touchEnd,
@@ -2248,7 +2498,7 @@ const handleSync = async (direction) => {
         showAiConfigModal, aiConfig, saveAiConfig,
         showAddIdentityModal, showEditIdentityModal, newIdentityInput, editIdentityInput,
         openAddIdentityModal, confirmAddIdentity, confirmEditIdentity, deleteIdentity,
-        startIdentityPress, clearIdentityPress,isAnalyzing, runAiAnalysis, startEvolution,labMode,
+        startIdentityPress, clearIdentityPress,isAnalyzing, runAiAnalysis, startEvolution,labMode, labSubTab,
         labHistory, addToHistory, deleteHistory, restoreHistory,handleProgressScroll,
         isBottomPanelExpanded, toggleBottomPanel, handlePanelTouchStart, handlePanelTouchEnd,
         showYearlyGoals, isEditingWishes, yearlyWishes, visionTitle, addWish, deleteWish,
@@ -2295,4 +2545,3 @@ const handleSync = async (direction) => {
         }, 100);
 
     });
-
