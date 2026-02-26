@@ -472,13 +472,13 @@
                         </button>
                     </div>
 
-                    <div class="flex space-x-3 overflow-x-auto pb-2 no-scrollbar">
+                    <div class="whitespace-nowrap overflow-x-auto pb-2 no-scrollbar min-h-[40px] w-full">
                         <div v-for="id in identities" :key="id.id" 
-                             @click="activeIdentity = id; saveIdentities()"
-                             @touchstart="startIdentityPress(id)"
-                             @touchend="clearIdentityPress"
-                             @touchcancel="clearIdentityPress"
-                             class="shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border border-transparent"
+                            @click="activeIdentity = id; saveIdentities()"
+                            @touchstart="startIdentityPress(id)"
+                            @touchend="clearIdentityPress"
+                            @touchcancel="clearIdentityPress"
+                            class="inline-block align-middle mr-3 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border border-transparent"
                              :class="activeIdentity?.id === id.id ? 'bg-white text-indigo-600 shadow-sm' : 'bg-indigo-700/50 text-indigo-100 hover:bg-indigo-700 border-indigo-500/30'">
                             {{ id.icon }} {{ id.name }}
                         </div>
