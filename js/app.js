@@ -2256,7 +2256,10 @@ const handleSync = async (direction) => {
     const confirmAddIdentity = () => {
         if (!newIdentityInput.value.trim()) return;
         const newId = { id: 'custom-' + Date.now(), name: newIdentityInput.value, icon: '✨', color: 'indigo' };
-        identities.value.push(newId);
+        
+        // ✅ 改为解构赋值，强制触发完整的 DOM 重绘
+        identities.value = [...identities.value, newId]; 
+        
         activeIdentity.value = newId;
         saveIdentities(); 
         newIdentityInput.value = '';
