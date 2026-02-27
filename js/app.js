@@ -771,90 +771,114 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                 localStorage.setItem('mike_gist_id', gistId.value);
             });
 
-            // --- 云同步逻辑 (Gist) ---
             // --- 修复后的完整同步函数 ---
-const handleSync = async (direction) => {
-    if (!githubToken.value) {
-        alert("请先填写 GitHub Token");
-        return;
-    }
-    syncStatus.value = 'loading';
-    
-    const fileName = 'mikes_flow_data.json';
-    
-    // 准备要上传的数据 (已移除 todayPomodoros)
-    const content = JSON.stringify({
-        tasks: tasks.value,
-        countdowns: countdowns.value,
-        updatedAt: new Date().toISOString()
-    });
-
-    try {
-        // === 1. 上传 (UPLOAD) 逻辑 ===
-        if (direction === 'upload') {
-            const method = gistId.value ? 'PATCH' : 'POST';
-            const url = gistId.value 
-                ? `https://api.github.com/gists/${gistId.value}` 
-                : 'https://api.github.com/gists';
-
-            const res = await fetch(url, {
-                method: method,
-                headers: {
-                    'Authorization': `token ${githubToken.value}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    description: "Future Flow Data Sync",
-                    public: false, // 私有 Gist
-                    files: {
-                        [fileName]: { content: content }
-                    }
-                })
-            });
-
-            if (!res.ok) throw new Error('上传失败');
-            const data = await res.json();
-            
-            // 如果是新建的，自动保存 Gist ID
-            if (!gistId.value) gistId.value = data.id;
-            
-            alert('✅ 上传成功！');
-        } 
-        
-        // === 2. 下载 (DOWNLOAD) 逻辑 ===
-        else {
-            if (!gistId.value) {
-                alert("请先提供 Gist ID");
-                syncStatus.value = 'error';
-                return;
-            }
-            const res = await fetch(`https://api.github.com/gists/${gistId.value}`, {
-                headers: { 'Authorization': `token ${githubToken.value}` }
-            });
-            
-            if (!res.ok) throw new Error('下载失败');
-            const data = await res.json();
-            const file = data.files[fileName];
-            
-            if (file && file.content) {
-                const cloudData = JSON.parse(file.content);
-                if(confirm(`云端更新于: ${cloudData.updatedAt}\n确定覆盖吗？`)) {
-                    tasks.value = cloudData.tasks || [];
-                    countdowns.value = cloudData.countdowns || [];
-                    alert('✅ 下载成功！');
+            const handleSync = async (direction) => {
+                if (!githubToken.value) {
+                    alert("请先填写 GitHub Token");
+                    return;
                 }
-            }
-        }
-        
-        syncStatus.value = 'success';
-        setTimeout(() => syncStatus.value = 'idle', 3000);
+                syncStatus.value = 'loading';
+                
+                const fileName = 'mikes_flow_data.json';
+                
+                // 1. 🌟 新增：准备要上传的所有核心数据
+                const content = JSON.stringify({
+                    tasks: tasks.value,
+                    countdowns: countdowns.value,
+                    reportHistory: reportHistory.value, // ✅ 同步暗黑胶囊研报
+                    identities: identities.value,       // ✅ 同步觉醒身份
+                    labHistory: labHistory.value,       // ✅ 同步身份问过AI的历史
+                    yearlyWishes: yearlyWishes.value,   // ✅ 同步年度愿景板
+                    updatedAt: new Date().toISOString()
+                });
 
-    } catch (e) {
-        console.error(e);
-        alert(`同步出错: ${e.message}`);
-        syncStatus.value = 'error';
-    }
-};
+                try {
+                    // === 1. 上传 (UPLOAD) 逻辑 ===
+                    if (direction === 'upload') {
+                        const method = gistId.value ? 'PATCH' : 'POST';
+                        const url = gistId.value 
+                            ? `https://api.github.com/gists/${gistId.value}` 
+                            : 'https://api.github.com/gists';
+
+                        const res = await fetch(url, {
+                            method: method,
+                            headers: {
+                                'Authorization': `token ${githubToken.value}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                description: "Future Flow Data Sync",
+                                public: false, // 私有 Gist
+                                files: {
+                                    [fileName]: { content: content }
+                                }
+                            })
+                        });
+
+                        if (!res.ok) throw new Error('上传失败');
+                        const data = await res.json();
+                        
+                        // 如果是新建的，自动保存 Gist ID
+                        if (!gistId.value) gistId.value = data.id;
+                        
+                        alert('✅ 所有模块数据已同步至云端！');
+                    } 
+                    
+                    // === 2. 下载 (DOWNLOAD) 逻辑 ===
+                    else {
+                        if (!gistId.value) {
+                            alert("请先提供 Gist ID");
+                            syncStatus.value = 'error';
+                            return;
+                        }
+                        const res = await fetch(`https://api.github.com/gists/${gistId.value}`, {
+                            headers: { 'Authorization': `token ${githubToken.value}` }
+                        });
+                        
+                        if (!res.ok) throw new Error('下载失败');
+                        const data = await res.json();
+                        const file = data.files[fileName];
+                        
+                        if (file && file.content) {
+                            const cloudData = JSON.parse(file.content);
+                            if(confirm(`云端数据更新于: \n${cloudData.updatedAt}\n\n确定覆盖本地数据吗？`)) {
+                                
+                                // 🌟 核心修复：将云端数据恢复到各个模块并保存到 LocalStorage
+                                tasks.value = cloudData.tasks || [];
+                                countdowns.value = cloudData.countdowns || [];
+                                
+                                if (cloudData.reportHistory) {
+                                    reportHistory.value = cloudData.reportHistory;
+                                    localStorage.setItem('ff_report_history', JSON.stringify(reportHistory.value));
+                                }
+                                if (cloudData.identities) {
+                                    identities.value = cloudData.identities;
+                                    saveIdentities(); // 调用自带函数保存身份
+                                }
+                                if (cloudData.labHistory) {
+                                    labHistory.value = cloudData.labHistory;
+                                    localStorage.setItem('ff_lab_history', JSON.stringify(labHistory.value));
+                                }
+                                if (cloudData.yearlyWishes) {
+                                    yearlyWishes.value = cloudData.yearlyWishes;
+                                    // yearlyWishes 自带 watch，会自动存入 localStorage
+                                }
+
+                                alert('✅ 跨设备下载覆盖成功！');
+                            }
+                        }
+                    }
+                    
+                    syncStatus.value = 'success';
+                    setTimeout(() => syncStatus.value = 'idle', 3000);
+
+                } catch (e) {
+                    console.error(e);
+                    alert(`同步出错: ${e.message}`);
+                    syncStatus.value = 'error';
+                }
+            };
+
             // --- 任务管理 ---
             const formatDateKey = (date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
             
