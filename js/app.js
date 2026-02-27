@@ -363,8 +363,8 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                 });
             };
 
-            const fetchMacroData = async () => {
-                if (macroData.value) return; 
+            const fetchMacroData = async (force = false) => {
+                if (!force && macroData.value) return; 
                 isMacroLoading.value = true;
                 try {
                     const res = await fetch('https://ff-api.zeabur.app/api/macro');
@@ -377,6 +377,8 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                     isMacroLoading.value = false;
                 }
             };
+
+            const refreshMacro = () => fetchMacroData(true);
 
             const drawSparklines = (assets) => {
                 Object.keys(assets).forEach(key => {
@@ -434,6 +436,66 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                 }
             };
 
+            // 简易缓存，减少请求与被限概率
+            const STOCK_CACHE_KEY = 'ff_stock_cache';
+            const readStockCache = () => {
+                try { return JSON.parse(localStorage.getItem(STOCK_CACHE_KEY)) || {}; } catch { return {}; }
+            };
+            const writeStockCache = (obj) => {
+                try { localStorage.setItem(STOCK_CACHE_KEY, JSON.stringify(obj)); } catch {}
+            };
+
+            const getStockData = async (ticker) => {
+                const t = ticker.trim().toUpperCase();
+                const cache = readStockCache();
+                const now = Date.now();
+                const ttl = 1000 * 60 * 3; // 3 分钟
+                if (cache[t] && now - cache[t].ts < ttl) return cache[t].data;
+
+                const endpoints = [
+                    `https://ff-api.zeabur.app/api/stock/${t}`,
+                    `https://api.futureflow.cyou/stock/${t}` // 需要你部署到同域的 CF Worker 聚合器
+                ];
+
+                let lastErr = null;
+                for (const url of endpoints) {
+                    try {
+                        const r = await fetch(url);
+                        if (!r.ok) {
+                            const txt = await r.text().catch(()=>''); 
+                            const em = `${r.status} ${r.statusText} ${txt}`.trim();
+                            // 429 提示更友好
+                            if (r.status === 429) throw new Error('请求过于频繁，请稍后重试（或更换数据源）');
+                            throw new Error(em);
+                        }
+                        const j = await r.json();
+                        cache[t] = { ts: now, data: j };
+                        writeStockCache(cache);
+                        return j;
+                    } catch (e) {
+                        lastErr = e;
+                    }
+                }
+                throw lastErr || new Error('获取股票数据失败');
+            };
+
+            const getFinancialsData = async (ticker) => {
+                const t = ticker.trim().toUpperCase();
+                const endpoints = [
+                    `https://api.futureflow.cyou/financials/${t}`,
+                    `https://ff-api.zeabur.app/api/financials/${t}`
+                ];
+                for (const url of endpoints) {
+                    try {
+                        const r = await fetch(url);
+                        if (!r.ok) continue;
+                        const j = await r.json();
+                        return j;
+                    } catch {}
+                }
+                return null;
+            };
+
             const analyzeStock = async () => {
                 if (!searchTicker.value.trim()) return;
                 isStockLoading.value = true;
@@ -441,20 +503,26 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                 stockAiInsight.value = '';
                 
                 try {
-                    const res = await fetch(`https://ff-api.zeabur.app/api/stock/${searchTicker.value.trim()}`);
-                    if (!res.ok) throw new Error('未找到该股票代码，或者该股票数据暂缺');
-                    const data = await res.json();
+                    const [base, fins] = await Promise.all([
+                        getStockData(searchTicker.value),
+                        getFinancialsData(searchTicker.value)
+                    ]);
+                    const data = { ...base, financials: fins || null };
                     stockData.value = data;
 
-                    // 数据回来后立刻画图
                     nextTick(() => drawStockChart());
 
-                    // 呼叫本地配置好的 AI 生成解读
                     generateStockAiInsight(data);
                 } catch (e) {
-                    alert(e.message);
+                    alert(e.message || '获取股票数据失败');
                 } finally {
                     isStockLoading.value = false;
+                }
+            };
+
+            const refreshStock = async () => {
+                if (searchTicker.value && searchTicker.value.trim()) {
+                    await analyzeStock();
                 }
             };
 
@@ -467,14 +535,27 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                 }
                 stockAiInsight.value = "🤖 智脑正在深度解析各项指标，请稍候...";
                 try {
-                    const prompt = `你是华尔街顶级交易员。请根据以下个股数据，用一段话给出客观的诊断结论（必须包含明确的操作建议：买入/观望/卖出）。语气要极客、专业、冰冷。
-                        代码: ${data.ticker}, 最新价: ${data.price}
-                        Alpha超额收益: ${data.indicators.alpha}%
-                        RSI情绪: ${data.indicators.rsi} (超70超买，低于30超卖)
-                        PEG估值: ${data.indicators.peg || 'N/A'} (低于1低估)
-                        综合评分: 价值${data.scores.Value}, 成长${data.scores.Growth}, 质量${data.scores.Quality}, 财务${data.scores.Financial}, 动能${data.scores.Momentum}`;
+                    const has = (p) => typeof p !== 'undefined' && p !== null;
+                    const lines = [
+                        `代码: ${data.ticker || 'N/A'}`,
+                        `最新价: ${has(data.price) ? data.price : 'N/A'}`,
+                    ];
+                    if (data?.indicators?.rsi) lines.push(`RSI: ${data.indicators.rsi}`);
+                    if (has(data?.indicators?.peg)) lines.push(`PEG: ${data.indicators.peg}`);
+                    if (data?.indicators?.alpha) lines.push(`Alpha: ${data.indicators.alpha}%`);
+                    if (data?.scores) {
+                        const s = data.scores;
+                        lines.push(`评分: 价值${s.Value ?? '-'}, 成长${s.Growth ?? '-'}, 质量${s.Quality ?? '-'}, 财务${s.Financial ?? '-'}, 动能${s.Momentum ?? '-'}`);
+                    }
+                    const f = data?.financials;
+                    const ttm = f?.ttm || {};
+                    if (typeof ttm.revenue !== 'undefined') lines.push(`营收TTM: ${ttm.revenue}`);
+                    if (typeof ttm.netIncome !== 'undefined') lines.push(`净利润TTM: ${ttm.netIncome}`);
+                    if (typeof ttm.eps !== 'undefined') lines.push(`EPS TTM: ${ttm.eps}`);
+                    if (typeof ttm.grossMargin !== 'undefined') lines.push(`毛利率TTM: ${ttm.grossMargin}`);
+                    const prompt = `你是华尔街顶级交易员。根据以下有限数据，用一段话给出客观的诊断与明确动作建议（买入/观望/卖出），语言要克制专业：\n${lines.join('\n')}`;
 
-                    const GEMINI_PROXY = 'https://futureflowlab.mzdesx.workers.dev';
+                    const GEMINI_PROXY = 'https://api.futureflow.cyou';
                     let rawText = "";
 
                     if (aiConfig.model === 'deepseek-chat') {
@@ -485,12 +566,19 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                         const resData = await response.json();
                         rawText = resData.choices[0].message.content;
                     } else {
-                        const response = await fetch(`${GEMINI_PROXY}/v1beta/models/${aiConfig.model}:generateContent?key=${aiConfig.key}`, {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        const baseUrl = GEMINI_PROXY.endsWith('/') ? GEMINI_PROXY.slice(0, -1) : GEMINI_PROXY;
+                        const _model = await resolveGeminiModel(baseUrl, aiConfig.key, aiConfig.model);
+                        const response = await fetch(`${baseUrl}/v1/models/${_model}:generateContent?key=${aiConfig.key}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                         });
+                        if (!response.ok) {
+                            const errText = await response.text().catch(() => '');
+                            throw new Error(`Gemini 请求失败: ${response.status} ${response.statusText} ${errText}`.trim());
+                        }
                         const resData = await response.json();
-                        rawText = resData.candidates[0].content.parts[0].text;
+                        rawText = resData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
                     }
                     stockAiInsight.value = rawText;
                 } catch(e) {
@@ -2237,7 +2325,7 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
             // 1. 定义 AI 配置状态
             const showAiConfigModal = ref(false);
             const aiConfig = reactive({
-                model: localStorage.getItem('ff_ai_model') || 'gemini-1.5-flash',
+                model: localStorage.getItem('ff_ai_model') || 'gemini-2.5-flash',
                 key: localStorage.getItem('ff_ai_key') || ''
             });
 
@@ -2321,12 +2409,35 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
     // FutureFlow/js/app.js 约 1440 行
     const isAnalyzing = ref(false);
 
+    const resolveGeminiModel = async (baseUrl, key, desired) => {
+        try {
+            const r = await fetch(`${baseUrl.replace(/\/$/, '')}/v1/models?key=${key}`);
+            if (!r.ok) return desired;
+            const j = await r.json();
+            const list = Array.isArray(j.models) ? j.models : [];
+            const gens = list.filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'));
+            const names = new Set(gens.map(m => (m.name || '').replace(/^models\//, '').toLowerCase()));
+            // 优先选择 2.5/2.0 系列作为最新版，其次回退至 1.5
+            const prefs = [
+                desired,
+                'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-pro',
+                'gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-2.0-flash-001', 'gemini-2.0-flash-lite-001', 'gemini-2.0-pro',
+                'gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-1.5-pro'
+            ].filter(Boolean);
+            const pick = prefs.find(n => names.has(String(n).toLowerCase()));
+            if (pick) return pick;
+            return gens[0] ? (gens[0].name || '').replace(/^models\//, '') : desired;
+        } catch (e) {
+            return desired;
+        }
+    };
+
     const runAiAnalysis = async () => {
         if (!aiConfig.key) { showAiConfigModal.value = true; return; }
         if (!web3Project.value.name) { alert("请先输入内容"); return; }
         
         isAnalyzing.value = true;
-        const GEMINI_PROXY = 'https://futureflowlab.mzdesx.workers.dev'; 
+        const GEMINI_PROXY = 'https://api.futureflow.cyou';
 
         try {
             // 🚀 核心分支：根据开关选择 Prompt
@@ -2348,14 +2459,24 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                 const data = await response.json();
                 rawText = data.choices[0].message.content;
              } else {
-                 // Gemini 请求代码
-                 const response = await fetch(`${GEMINI_PROXY}/v1beta/models/${aiConfig.model}:generateContent?key=${aiConfig.key}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
-                });
-                const data = await response.json();
-                rawText = data.candidates[0].content.parts[0].text;
+                 const baseUrl = GEMINI_PROXY.endsWith('/') ? GEMINI_PROXY.slice(0, -1) : GEMINI_PROXY;
+
+                const _model = await resolveGeminiModel(baseUrl, aiConfig.key, aiConfig.model);
+                const response = await fetch(`${baseUrl}/v1/models/${_model}:generateContent?key=${aiConfig.key}`, {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+                 });
+
+                if (!response.ok) {
+                    const errText = await response.text().catch(() => '');
+                    const err = new Error(`Gemini 请求失败: ${response.status} ${response.statusText} ${errText}`.trim());
+                    err.status = response.status;
+                    err.details = errText;
+                    throw err;
+                }
+                 const data = await response.json();
+                 rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
              }
             
             console.log("AI 回传:", rawText);
@@ -2395,7 +2516,15 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
 
         } catch (e) {
             console.error(e);
-            alert("AI 请求失败，请检查网络或 API Key");
+            // 针对 429 的明确提示
+            const msg = e?.message || '';
+            const retryMatch = msg.match(/retry in ([\d\.]+)s/i);
+            const waitSec = retryMatch ? Math.ceil(parseFloat(retryMatch[1])) : null;
+            if (e?.status === 429 || /RESOURCE_EXHAUSTED|rate|quota/i.test(msg)) {
+                alert(`AI 请求受限：已触发额度/速率限制${waitSec ? `，约 ${waitSec} 秒后可再试` : ''}。\n建议：\n1) 在 AI Studio 查看并开通账单或更换 API Key；\n2) 在模型下拉选择 gemini-1.5-flash 或 gemini-1.5-flash-8b；\n3) 稍候再试。`);
+            } else {
+                alert(`AI 请求失败：${msg || '未知错误'}`);
+            }
         } finally {
             isAnalyzing.value = false;
         }
@@ -2624,8 +2753,8 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
         toggleTheme,
         identities, activeIdentity, web3Project, saveIdentities,
         showHistoryModal,isFinanceUnlocked, requestUnlock, dailyReportData, showReportDetail, reportHistory, archivedReports, showReportArchiveModal, currentViewReport, viewArchivedReport,
-        macroData, isMacroLoading, getAssetName,showMacroModal, currentMacroAssetKey, currentMacroAssetData, openMacroDetail, 
-        searchTicker, stockData, isStockLoading, stockAiInsight, analyzeStock,
+        macroData, isMacroLoading, getAssetName,showMacroModal, currentMacroAssetKey, currentMacroAssetData, openMacroDetail, refreshMacro,
+        searchTicker, stockData, isStockLoading, stockAiInsight, analyzeStock, refreshStock,
         financeMode,
         currentTab, showProgressFloatBtn,showCalendar, toggleCalendar: () => showCalendar.value = !showCalendar.value,
         stripDays, handleHeaderTouchStart, handleHeaderTouchEnd,
