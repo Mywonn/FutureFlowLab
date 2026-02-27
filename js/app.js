@@ -243,6 +243,15 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                 currentViewReport.value = report;
                 showReportDetail.value = true;
             };
+            const deleteArchivedReport = (id) => {
+                reportHistory.value = reportHistory.value.filter(r => r.id !== id);
+                localStorage.setItem('ff_report_history', JSON.stringify(reportHistory.value));
+                if (currentViewReport.value && currentViewReport.value.id === id) {
+                    currentViewReport.value = null;
+                    showReportDetail.value = false;
+                }
+                if(navigator.vibrate) navigator.vibrate(10);
+            };
             
 
             // ==========================================
@@ -2753,6 +2762,7 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
         toggleTheme,
         identities, activeIdentity, web3Project, saveIdentities,
         showHistoryModal,isFinanceUnlocked, requestUnlock, dailyReportData, showReportDetail, reportHistory, archivedReports, showReportArchiveModal, currentViewReport, viewArchivedReport,
+        deleteArchivedReport, fetchDailyReportFromGist,
         macroData, isMacroLoading, getAssetName,showMacroModal, currentMacroAssetKey, currentMacroAssetData, openMacroDetail, refreshMacro,
         searchTicker, stockData, isStockLoading, stockAiInsight, analyzeStock, refreshStock,
         financeMode,
