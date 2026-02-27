@@ -446,10 +446,24 @@
                         </button>
                     </div>
                     
-                    <div class="flex items-center bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-1">
+                    <div v-if="labSubTab === 'awake'" class="flex items-center bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-1 animate-fade-in">
                         <button @click="showHistoryModal = true" class="w-10 h-9 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl active:scale-95 transition-all"><span class="text-base opacity-80 hover:opacity-100">📜</span></button>
                         <div class="w-px h-4 bg-gray-100 dark:bg-gray-700 mx-0.5"></div>
                         <button @click="showAiConfigModal = true" class="w-10 h-9 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl active:scale-95 transition-all"><span class="text-base opacity-80 hover:opacity-100">⚙️</span></button>
+                    </div>
+
+                    <div v-if="labSubTab === 'finance'" class="flex items-center bg-gray-200/60 dark:bg-gray-800 p-1 rounded-2xl shadow-inner border border-gray-100 dark:border-gray-700 animate-fade-in">
+                        <button @click="financeMode = 'macro'"
+                                :class="financeMode === 'macro' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
+                                class="px-5 py-1.5 rounded-xl text-sm font-black transition-all flex items-center justify-center relative">
+                            宏观
+                            <span class="absolute -top-1.5 right-0 text-[7px] scale-75 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 px-1 rounded border border-blue-200 dark:border-blue-800/50">BETA</span>
+                        </button>
+                        <button @click="financeMode = 'stock'" 
+                                :class="financeMode === 'stock' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
+                                class="px-5 py-1.5 rounded-xl text-sm font-black transition-all flex items-center justify-center">
+                            个股
+                        </button>
                     </div>
                 </div>
             </div>
@@ -751,21 +765,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="fixed bottom-[115px] left-0 w-full flex justify-center z-40 pointer-events-none mb-0">
-                    <div class="inline-flex items-center bg-gray-200/60 dark:bg-gray-800/90 backdrop-blur-md p-1 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.6)] border border-gray-100 dark:border-gray-700 pointer-events-auto">
-                        <button @click="financeMode = 'macro'"
-                                :class="financeMode === 'macro' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
-                                class="px-8 py-1.5 rounded-xl text-sm font-black tracking-widest transition-all relative">
-                            宏观全景
-                            <span class="absolute -top-1 -right-2 text-[7px] scale-75 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 px-1 rounded border border-blue-200 dark:border-blue-800/50">BETA</span>
-                        </button>
-                        <button @click="financeMode = 'stock'" 
-                                :class="financeMode === 'stock' ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'"
-                                class="px-8 py-1.5 rounded-xl text-sm font-black tracking-widest transition-all">
-                            个股侦测
-                        </button>
-                    </div>
-                </div>
+                
             </div>
 
         </div>
