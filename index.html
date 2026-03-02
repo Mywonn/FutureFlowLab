@@ -679,7 +679,12 @@
 
                 <div class="space-y-4 text-gray-300 relative overflow-hidden">
                     <div class="absolute -top-10 -right-10 w-40 h-40 bg-blue-600 opacity-20 blur-[50px] rounded-full pointer-events-none"></div>
-
+                    <div v-if="macroData && macroData.mentor_insight" class="relative z-10 bg-blue-900/20 border border-blue-800/50 rounded-2xl p-4 mb-6">
+                            <h4 class="text-xs font-bold mb-2 flex items-center" :class="{'text-red-400': macroData.mentor_insight.type === 'risk', 'text-green-400': macroData.mentor_insight.type === 'opportunity', 'text-blue-400': macroData.mentor_insight.type === 'neutral'}">
+                                <span class="mr-1 text-base">💬</span> AI 导师点评：{{ macroData.mentor_insight.title }}
+                            </h4>
+                            <p class="text-[11px] text-gray-300 leading-relaxed font-medium">{{ macroData.mentor_insight.content }}</p>
+                        </div>
                     <div v-show="financeMode === 'macro'" class="animate-fade-in">
                         <div v-if="isMacroLoading" class="py-24 flex flex-col items-center justify-center space-y-5">
                             <div class="relative w-16 h-16 flex items-center justify-center">
@@ -708,12 +713,7 @@
                             </div>
                         </div>
 
-                        <div v-if="macroData && macroData.mentor_insight" class="relative z-10 bg-blue-900/20 border border-blue-800/50 rounded-2xl p-4 mb-6">
-                            <h4 class="text-xs font-bold mb-2 flex items-center" :class="{'text-red-400': macroData.mentor_insight.type === 'risk', 'text-green-400': macroData.mentor_insight.type === 'opportunity', 'text-blue-400': macroData.mentor_insight.type === 'neutral'}">
-                                <span class="mr-1 text-base">💬</span> AI 导师点评：{{ macroData.mentor_insight.title }}
-                            </h4>
-                            <p class="text-[11px] text-gray-300 leading-relaxed font-medium">{{ macroData.mentor_insight.content }}</p>
-                        </div>
+                        
                     </div>
 
                     <div v-show="financeMode === 'stock'" class="animate-fade-in">
@@ -2124,6 +2124,7 @@
 
 </body>
 </html>
+
 
 
 
