@@ -131,7 +131,7 @@
         }
         
         .safe-top {
-            padding-top: calc(env(safe-area-inset-top) + 12px) !important;
+            padding-top: calc(env(safe-area-inset-top) + 4px) !important;
         }
 
         /* ✅ 新增: 专门处理底部安全区的类 */
@@ -828,7 +828,7 @@
                         class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black shadow-xl shadow-indigo-200 dark:shadow-none active:scale-95 transition-transform mt-2 mb-4 flex flex-col items-center justify-center relative overflow-hidden group">
                     <span class="relative z-10 text-sm">采用此方案并执行</span>
                     <span class="relative z-10 text-[10px] opacity-80 font-normal mt-0.5">
-                        {{ web3Project.plans[web3Project.selectedPlanIndex]?.type || 'Standard Plan' }} · 解锁第一阶段
+                        {{ web3Project.plans[web3Project.selectedPlanIndex]?.type || 'Standard Plan' }} · {{ web3Project.plans[web3Project.selectedPlanIndex]?.phases ? '解锁第一阶段' : '下发到规划' }}
                     </span>
                    <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
                 </button>
@@ -1099,7 +1099,7 @@
             </div>
 
             <div class="flex-1 flex flex-col min-h-0 overflow-hidden relative">
-                <div class="flex-1 overflow-y-auto px-4 pt-2 pb-4 space-y-2"
+                <div class="flex-1 overflow-y-auto px-4 pt-2 pb-24 space-y-2"
                         @touchstart="handlePageTouchStart"
                         @touchend="handlePageTouchEnd">
 
@@ -1314,11 +1314,11 @@
                 </div>
             </div>
 
-           <div class="absolute bottom-0 left-0 right-0 transition-all duration-500 cubic-bezier(0.25, 1, 0.5, 1) z-40 flex flex-col rounded-t-3xl overflow-hidden"
+           <div class="absolute left-0 right-0 transition-all duration-500 cubic-bezier(0.25, 1, 0.5, 1) z-40 flex flex-col rounded-t-3xl overflow-hidden"
                 :class="isBottomPanelExpanded 
                     ? 'h-40 bg-white dark:bg-gray-900 shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.1)]' 
                     : 'h-7 bg-transparent'"
-                style="touch-action: none;">
+                style="bottom: 0; touch-action: none;">
                 
                 <div class="h-7 w-full flex items-center justify-center shrink-0 cursor-pointer z-30"
                      @click="toggleBottomPanel"
@@ -1926,10 +1926,13 @@
 </div>
     </div>
 
-    <div class="shrink-0 flex items-center px-3 py-0.1 pb-safe z-30 select-none transition-colors duration-500 gap-2 w-full bg-transparent">
+    <div class="shrink-0 flex items-center px-3 pt-2 z-30 select-none transition-colors duration-500 gap-2 w-full"
+         style="padding-bottom: max(12px, env(safe-area-inset-bottom))"
+         :class="currentTab === 'lab' && labSubTab === 'finance' ? 'bg-black' : (currentTab === 'lab' && labSubTab === 'awake' && activeIdentity?.colorHex ? '' : 'bg-transparent')"
+         :style="currentTab === 'lab' && labSubTab === 'awake' && activeIdentity?.colorHex ? { backgroundColor: activeIdentity.colorHex } : {}">
         
         <button @click="openDiary"
-                class="flex flex-col items-center justify-center w-[4.2rem] h-[3.5rem] rounded-r-[1.5rem] rounded-l-none -ml-3 pl-1 transition-all active:scale-95 shrink-0 relative shadow-sm"
+                class="flex flex-col items-center justify-center w-[4.2rem] h-[3.5rem] rounded-r-full rounded-l-none -ml-3 pl-1 transition-all active:scale-95 shrink-0 relative shadow-sm"
                 :class="currentTab === 'lab' && labSubTab === 'finance' ? 'bg-gray-800 border border-l-0 border-gray-700' : (currentTab === 'lab' && labSubTab === 'awake' && activeIdentity?.colorHex ? 'bg-white/15 border border-l-0 border-white/20 backdrop-blur-md' : 'bg-gray-100 dark:bg-gray-800 border border-l-0 border-gray-200 dark:border-gray-700 backdrop-blur-xl')">
             <span class="text-2xl leading-none">📖</span>
             <span class="text-[9px] mt-0.5 font-bold"

@@ -1613,7 +1613,10 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
         const milestones = plan.milestones || plan.steps || [];
         const subtasks = milestones.map(s => ({ id: Date.now() + Math.random(), text: s, done: false }));
 
-        if (activeIdentity.value) {
+        // Extract 模式只下发任务到规划，不写入身份 missions
+        const isExtractMode = plan.type === '💡 灵感萃取' || labMode.value === 'extract';
+
+        if (!isExtractMode && activeIdentity.value) {
             if (!activeIdentity.value.activeMissions) {
                 activeIdentity.value.activeMissions = [];
                 if (activeIdentity.value.currentMission) {
@@ -1871,13 +1874,14 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
             const getTabBtnClass = (tabName) => {
                 const isActive = currentTab.value === tabName;
                 const isAwakeThemed = currentTab.value === 'lab' && labSubTab.value === 'awake' && activeIdentity.value?.colorHex;
+                const isFinanceThemed = currentTab.value === 'lab' && labSubTab.value === 'finance';
                 
                 if (isActive) {
-                    // 选中状态：如果是在觉醒页变色模式下，变纯白；否则是默认蓝色
-                    return isAwakeThemed ? 'text-white scale-105 font-bold' : 'text-blue-600 dark:text-blue-400 scale-105 font-bold';
+                    if (isAwakeThemed || isFinanceThemed) return 'text-white scale-105 font-bold';
+                    return 'text-blue-600 dark:text-blue-400 scale-105 font-bold';
                 } else {
-                    // 未选中状态：如果是变色模式下，变半透明白；否则是灰色
-                    return isAwakeThemed ? 'text-white/50 hover:text-white/70' : 'text-gray-400 hover:text-gray-500';
+                    if (isAwakeThemed || isFinanceThemed) return 'text-white/50 hover:text-white/70';
+                    return 'text-gray-400 hover:text-gray-500';
                 }
             };
 
