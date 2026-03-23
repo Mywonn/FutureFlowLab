@@ -73,8 +73,11 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                     if (retryCount > 10) return;
                     nextTick(() => {
                         const el = document.getElementById('day-' + selectedDate.value.toDateString());
-                        if (el) {
-                            el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                        const container = dateScrollContainer.value;
+                        if (el && container) {
+                            const containerCenter = container.offsetWidth / 2;
+                            const elOffset = el.offsetLeft + el.offsetWidth / 2;
+                            container.scrollTo({ left: elOffset - containerCenter, behavior: 'smooth' });
                         } else {
                             setTimeout(() => forceScrollToToday(retryCount + 1), 300);
                         }
@@ -215,9 +218,12 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                     if (!selectedDate.value) return;
                     const id = 'day-' + selectedDate.value.toDateString();
                     const el = document.getElementById(id);
-                    if (el && dateScrollContainer.value) {
-                        // 平滑滚动将选中元素置于中间
-                        el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                    const container = dateScrollContainer.value;
+                    if (el && container) {
+                        // 精确居中：让元素中心对齐容器中心
+                        const containerCenter = container.offsetWidth / 2;
+                        const elOffset = el.offsetLeft + el.offsetWidth / 2;
+                        container.scrollTo({ left: elOffset - containerCenter, behavior: 'smooth' });
                     }
                 });
             };
@@ -1875,6 +1881,122 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                 }
             };
 
+            // ==========================================
+            // 📖 成功日记模块
+            // ==========================================
+            const DIARY_PIN = '1234';
+            const DIARY_STORAGE_KEY = 'futureflow-diary-v1';
+
+            const showDiaryLock = ref(false);
+            const showDiaryMain = ref(false);
+            const diaryPin = ref('');
+            const diaryPinError = ref(false);
+            const diaryView = ref('today');
+
+            const diaryMoods = [
+                { emoji: '🔥' }, { emoji: '😊' }, { emoji: '😐' }, { emoji: '😔' }, { emoji: '💪' }
+            ];
+            const diaryTagOptions = ['专注', '突破', '感恩', '学习', '挑战', '放松', '创意', '坚持'];
+
+            const diaryHistory = ref([]);
+            const diaryTodayStr = computed(() => {
+                const d = new Date();
+                return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 周${'日一二三四五六'[d.getDay()]}`;
+            });
+            const diaryTodayKey = () => {
+                const d = new Date();
+                return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            };
+
+            const diaryEntry = reactive({
+                mood: '',
+                achievements: [],
+                content: '',
+                tags: [],
+            });
+
+            const loadDiary = () => {
+                const saved = localStorage.getItem(DIARY_STORAGE_KEY);
+                if (saved) diaryHistory.value = JSON.parse(saved);
+                const todayRecord = diaryHistory.value.find(e => e.date === diaryTodayKey());
+                if (todayRecord) {
+                    diaryEntry.mood = todayRecord.mood || '';
+                    diaryEntry.achievements = [...(todayRecord.achievements || [])];
+                    diaryEntry.content = todayRecord.content || '';
+                    diaryEntry.tags = [...(todayRecord.tags || [])];
+                } else {
+                    diaryEntry.mood = '';
+                    diaryEntry.achievements = [];
+                    diaryEntry.content = '';
+                    diaryEntry.tags = [];
+                }
+            };
+
+            const openDiary = () => {
+                diaryPin.value = '';
+                diaryPinError.value = false;
+                showDiaryLock.value = true;
+            };
+
+            const closeDiary = () => {
+                showDiaryLock.value = false;
+                showDiaryMain.value = false;
+                diaryPin.value = '';
+            };
+
+            const handlePinInput = (n) => {
+                if (n === '') return;
+                if (n === '⌫') {
+                    diaryPin.value = diaryPin.value.slice(0, -1);
+                    diaryPinError.value = false;
+                    return;
+                }
+                if (diaryPin.value.length >= 4) return;
+                diaryPin.value += String(n);
+                if (diaryPin.value.length === 4) {
+                    nextTick(() => {
+                        if (diaryPin.value === DIARY_PIN) {
+                            showDiaryLock.value = false;
+                            loadDiary();
+                            showDiaryMain.value = true;
+                            diaryView.value = 'today';
+                        } else {
+                            diaryPinError.value = true;
+                            setTimeout(() => { diaryPin.value = ''; diaryPinError.value = false; }, 800);
+                        }
+                    });
+                }
+            };
+
+            const addDiaryAchievement = () => { diaryEntry.achievements.push(''); };
+
+            const toggleDiaryTag = (tag) => {
+                const idx = diaryEntry.tags.indexOf(tag);
+                if (idx === -1) diaryEntry.tags.push(tag);
+                else diaryEntry.tags.splice(idx, 1);
+            };
+
+            const saveDiaryEntry = () => {
+                const key = diaryTodayKey();
+                const record = {
+                    date: key,
+                    mood: diaryEntry.mood,
+                    achievements: diaryEntry.achievements.filter(a => a.trim()),
+                    content: diaryEntry.content.trim(),
+                    tags: [...diaryEntry.tags],
+                };
+                const idx = diaryHistory.value.findIndex(e => e.date === key);
+                if (idx !== -1) diaryHistory.value.splice(idx, 1, record);
+                else diaryHistory.value.unshift(record);
+                diaryHistory.value.sort((a, b) => b.date.localeCompare(a.date));
+                localStorage.setItem(DIARY_STORAGE_KEY, JSON.stringify(diaryHistory.value));
+                diaryView.value = 'history';
+            };
+
+            const deleteDiaryEntry = (date) => {
+                diaryHistory.value = diaryHistory.value.filter(e => e.date !== date);
+                localStorage.setItem(DIARY_STORAGE_KEY, JSON.stringify(diaryHistory.value));
+            };
 
            
     return {
@@ -1931,6 +2053,11 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
         getTabContainerClass,
         getTabBtnClass,getTaskDayProgress,tasksForActiveIdentity,
         adoptPlan, unlockNextPhase, clearActivePlan, unlockNextPhaseWithDispatch,
+        // 成功日记
+        showDiaryLock, showDiaryMain, diaryPin, diaryPinError, diaryView,
+        diaryMoods, diaryTagOptions, diaryHistory, diaryTodayStr, diaryEntry,
+        openDiary, closeDiary, handlePinInput,
+        addDiaryAchievement, toggleDiaryTag, saveDiaryEntry, deleteDiaryEntry,
     };
         } // 结束 setup
     }); // 结束 createApp 定义
