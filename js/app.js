@@ -1888,7 +1888,7 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
             // ==========================================
             // 📖 成功日记模块
             // ==========================================
-            const DIARY_PIN = '1234';
+            const DIARY_PIN = '7890';
             const DIARY_STORAGE_KEY = 'futureflow-diary-v1';
 
             const showDiaryLock = ref(false);
