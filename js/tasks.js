@@ -95,11 +95,26 @@ export function useTasks({
         return tasks.value.some(t => t.date === key && !t.done);
     };
 
-    // 身份优先排序辅助
+    // 🌟 1. 补齐严格匹配当前身份的逻辑 (与 app.js 保持一致)
+    const isTaskBelongToCurrentIdentity = (task) => {
+        if (!activeIdentity?.value) return false;
+        
+        // 匹配手动绑定的任务
+        if (task.identityId === activeIdentity.value.id) return true;
+        
+        // 匹配 AI 下发的系列任务
+        if (task.systemName && activeIdentity.value.activeMissions) {
+            return activeIdentity.value.activeMissions.some(m => m.name === task.systemName);
+        }
+        
+        return false;
+    };
+
+    // 🌟 2. 身份优先排序辅助
     const identityFirst = (a, b) => {
-        if (!activeIdentity?.value) return 0;
-        const aMatch = a.identityId === activeIdentity.value.id;
-        const bMatch = b.identityId === activeIdentity.value.id;
+        const aMatch = isTaskBelongToCurrentIdentity(a);
+        const bMatch = isTaskBelongToCurrentIdentity(b);
+        
         if (aMatch && !bMatch) return -1;
         if (!aMatch && bMatch) return 1;
         return 0;
