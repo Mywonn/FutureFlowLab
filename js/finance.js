@@ -228,7 +228,7 @@ export function useFinance({ labSubTab, showSyncModal, aiConfig }) {
         if (!force && macroData.value) return;
         isMacroLoading.value = true;
         try {
-            const res = await fetch('https://ff-api.zeabur.app/api/macro');
+            const res = await fetch('https://finance.futureflow.cyou/api/macro');
             if (!res.ok) throw new Error('网络响应错误');
             macroData.value = await res.json();
             nextTick(() => drawSparklines(macroData.value.assets));
@@ -284,7 +284,7 @@ export function useFinance({ labSubTab, showSyncModal, aiConfig }) {
         if (cache[t] && now - cache[t].ts < ttl) return cache[t].data;
 
         const endpoints = [
-            `https://ff-api.zeabur.app/api/stock/${t}`,
+            `https://finance.futureflow.cyou/api/stock/${t}`,
             `https://api.futureflow.cyou/stock/${t}`
         ];
         let lastErr = null;

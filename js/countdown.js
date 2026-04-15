@@ -107,6 +107,12 @@ export function useCountdown({ currentTab }) {
                     nextDate.setFullYear(now.getFullYear());
                     nextDate.setMonth(now.getMonth());
                     if (nextDate.getTime() < todayTime - 86400000) nextDate.setMonth(now.getMonth() + 1);
+                } else if (item.repeat === 'quarter') {
+                        nextDate = new Date(targetDate);
+                        while (nextDate.getTime() < todayTime - 86400000) {
+                            nextDate.setMonth(nextDate.getMonth() + 3);
+                        }
+
                 } else if (item.repeat === 'week') {
                     const targetDay  = new Date(item.date).getDay();
                     const currentDay = now.getDay();
@@ -128,7 +134,7 @@ export function useCountdown({ currentTab }) {
     };
 
     const getRepeatText = (r) => {
-        const map = { none: '', year: '每年', month: '每月', week: '每周', day: '每日' };
+        const map = { none: '', year: '每年', quarter: '每季度', month: '每月', week: '每周', day: '每日' };
         return map[r] || '';
     };
 
