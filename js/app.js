@@ -287,6 +287,7 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                     labHistory: labHistory.value,       // ✅ 同步身份问过AI的历史
                     yearlyWishes: yearlyWishes.value,   // ✅ 同步年度愿景板
                     tradeLogs: tradeLogs.value, 
+                    diaryHistory: diaryHistory.value,
                     updatedAt: new Date().toISOString()
                 });
 
@@ -364,7 +365,12 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                                 if (cloudData.tradeLogs) {
                                     tradeLogs.value = cloudData.tradeLogs;
                                     localStorage.setItem('ff_trade_logs', JSON.stringify(tradeLogs.value));
+                                    
                                 }
+                                if (cloudData.diaryHistory) {
+                                         diaryHistory.value = cloudData.diaryHistory;
+                                        localStorage.setItem('futureflow-diary-v1', JSON.stringify(diaryHistory.value));
+                                     }
 
                                 alert('✅ 跨设备下载覆盖成功！');
                             }
