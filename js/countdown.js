@@ -5,7 +5,7 @@ const { ref, computed, reactive, watch, nextTick } = window.Vue;
 // 依赖：currentTab
 // ==========================================
 
-export function useCountdown({ currentTab }) {
+export function useCountdown({ currentTab, selectedDate }) {
 
     const countdowns = ref([
         { id: 1, name: '比特币减半预期', date: '2028-04-18', color: 'border-orange-500', pinned: true },
@@ -71,8 +71,9 @@ export function useCountdown({ currentTab }) {
 
     // 核心算法：计算距离天数（支持农历 + 重复周期）
     const getDaysUntilData = (item) => {
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
+    // 优先使用日历选中的日子，如果没有传再用系统今天
+    const now = selectedDate ? new Date(selectedDate.value) : new Date(); 
+    now.setHours(0, 0, 0, 0);
         let targetDate = new Date(item.date);
         targetDate.setHours(0, 0, 0, 0);
         let nextDate   = new Date(targetDate);
@@ -108,11 +109,10 @@ export function useCountdown({ currentTab }) {
                     nextDate.setMonth(now.getMonth());
                     if (nextDate.getTime() < todayTime - 86400000) nextDate.setMonth(now.getMonth() + 1);
                 } else if (item.repeat === 'quarter') {
-                        nextDate = new Date(targetDate);
-                        while (nextDate.getTime() < todayTime - 86400000) {
-                            nextDate.setMonth(nextDate.getMonth() + 3);
-                        }
-
+                    nextDate = new Date(targetDate);
+                    while (nextDate.getTime() < todayTime) {
+                        nextDate.setMonth(nextDate.getMonth() + 3);
+                    }
                 } else if (item.repeat === 'week') {
                     const targetDay  = new Date(item.date).getDay();
                     const currentDay = now.getDay();

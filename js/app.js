@@ -338,8 +338,14 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                         const data = await res.json();
                         const file = data.files[fileName];
                         
-                        if (file && file.content) {
-                            const cloudData = JSON.parse(file.content);
+                        if (file && file.raw_url) {
+                            // 使用 raw_url 获取完整内容，避免 GitHub API 对大文件截断导致 JSON Parse error
+                            const rawRes = await fetch(file.raw_url, {
+                                headers: { 'Authorization': `token ${githubToken.value}` }
+                            });
+                            if (!rawRes.ok) throw new Error('读取云端文件失败');
+                            const rawText = await rawRes.text();
+                            const cloudData = JSON.parse(rawText);
                             if(confirm(`云端数据更新于: \n${cloudData.updatedAt}\n\n确定覆盖本地数据吗？`)) {
                                 
                                 // 🌟 核心修复：将云端数据恢复到各个模块并保存到 LocalStorage
