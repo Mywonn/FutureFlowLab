@@ -62,7 +62,23 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                 if (savedToken)  githubToken.value = savedToken;
                 if (savedGistId) gistId.value = savedGistId;
 
-                // 金融模块解锁校验（逻辑在 finance.js 内部，不依赖硬编码 ID）
+                // 每日自动同步：有 token + gistId，且今天还没同步过，则静默上传
+                const autoSyncKey = 'ff_last_auto_sync_date';
+                const todayStr = new Date().toDateString();
+                const lastSyncDate = localStorage.getItem(autoSyncKey);
+                if (savedToken && savedGistId && lastSyncDate !== todayStr) {
+                    // 延迟 1.5s 等待所有模块数据加载完毕再上传
+                    setTimeout(async () => {
+                        try {
+                            await handleSync('upload', true);
+                            localStorage.setItem(autoSyncKey, todayStr);
+                        } catch (e) {
+                            console.warn('自动同步失败:', e.message);
+                        }
+                    }, 1500);
+                }
+
+                // 金融模块解锁校验
                 checkFinanceUnlock();
 
                 // 初次拉取每日研报
@@ -269,9 +285,9 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
             });
 
             // --- 修复后的完整同步函数 ---
-            const handleSync = async (direction) => {
+            const handleSync = async (direction, silent = false) => {
                 if (!githubToken.value) {
-                    alert("请先填写 GitHub Token");
+                    if (!silent) alert("请先填写 GitHub Token");
                     return;
                 }
                 syncStatus.value = 'loading';
@@ -320,7 +336,7 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                         // 如果是新建的，自动保存 Gist ID
                         if (!gistId.value) gistId.value = data.id;
                         
-                        alert('✅ 所有模块数据已同步至云端！');
+                        if (!silent) alert('✅ 所有模块数据已同步至云端！');
                     } 
                     
                     // === 2. 下载 (DOWNLOAD) 逻辑 ===
@@ -340,9 +356,9 @@ const { createApp, ref, computed, watch, onMounted, reactive, nextTick } = Vue; 
                         
                         if (file && file.raw_url) {
                             // 使用 raw_url 获取完整内容，避免 GitHub API 对大文件截断导致 JSON Parse error
-                            const rawRes = await fetch(file.raw_url, {
-                                headers: { 'Authorization': `token ${githubToken.value}` }
-                            });
+                            // raw_url 已将认证信息编码在 URL 中，不能带 Authorization header
+                            // 带 header 会触发 CORS preflight，导致 github.io 跨域失败
+                            const rawRes = await fetch(file.raw_url);
                             if (!rawRes.ok) throw new Error('读取云端文件失败');
                             const rawText = await rawRes.text();
                             const cloudData = JSON.parse(rawText);
